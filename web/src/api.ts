@@ -1,8 +1,9 @@
 import { broadcastLogout, withRefreshCoordination } from "./auth-coordination";
 
-type ApiOptions = {
-  method?: "GET" | "POST" | "PATCH";
+export type ApiOptions = {
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
+  headers?: Record<string, string>;
   accessToken?: string;
   onAccessToken?: (token: string) => void;
   onSessionExpired?: () => void;
@@ -32,6 +33,11 @@ async function fetchPayload(path: string, options: ApiOptions, accessToken?: str
   const headers = new Headers({ Accept: "application/json" });
   if (options.body !== undefined) headers.set("Content-Type", "application/json");
   if (accessToken) headers.set("Authorization", "Bearer " + accessToken);
+  if (options.headers) {
+    for (const [key, value] of Object.entries(options.headers)) {
+      headers.set(key, value);
+    }
+  }
 
   let response: Response;
   try {

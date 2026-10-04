@@ -13,6 +13,10 @@ import { requestLogger } from "./middleware/requestLogger.js";
 import { errorHandler } from "./middleware/error.js";
 import { notFoundHandler } from "./middleware/notFound.js";
 import authRouter from "./modules/auth/auth.routes.js";
+import storesRouter from "./modules/stores/stores.routes.js";
+import invitesRouter from "./modules/invites/invites.routes.js";
+import storefrontRouter from "./modules/storefront/storefront.routes.js";
+
 
 const app: Application = express();
 
@@ -36,6 +40,9 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 app.use("/auth", authRouter);
+app.use("/stores", storesRouter);
+app.use("/invites", invitesRouter);
+app.use("/s", storefrontRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 

@@ -175,6 +175,11 @@ export type StoreWhereInput = {
   slug?: Prisma.StringFilter<"Store"> | string
   createdAt?: Prisma.DateTimeFilter<"Store"> | Date | string
   memberships?: Prisma.MembershipListRelationFilter
+  invites?: Prisma.InviteListRelationFilter
+  products?: Prisma.ProductListRelationFilter
+  coupons?: Prisma.CouponListRelationFilter
+  orders?: Prisma.OrderListRelationFilter
+  auditLogs?: Prisma.AuditLogListRelationFilter
 }
 
 export type StoreOrderByWithRelationInput = {
@@ -183,6 +188,11 @@ export type StoreOrderByWithRelationInput = {
   slug?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   memberships?: Prisma.MembershipOrderByRelationAggregateInput
+  invites?: Prisma.InviteOrderByRelationAggregateInput
+  products?: Prisma.ProductOrderByRelationAggregateInput
+  coupons?: Prisma.CouponOrderByRelationAggregateInput
+  orders?: Prisma.OrderOrderByRelationAggregateInput
+  auditLogs?: Prisma.AuditLogOrderByRelationAggregateInput
   _relevance?: Prisma.StoreOrderByRelevanceInput
 }
 
@@ -195,6 +205,11 @@ export type StoreWhereUniqueInput = Prisma.AtLeast<{
   name?: Prisma.StringFilter<"Store"> | string
   createdAt?: Prisma.DateTimeFilter<"Store"> | Date | string
   memberships?: Prisma.MembershipListRelationFilter
+  invites?: Prisma.InviteListRelationFilter
+  products?: Prisma.ProductListRelationFilter
+  coupons?: Prisma.CouponListRelationFilter
+  orders?: Prisma.OrderListRelationFilter
+  auditLogs?: Prisma.AuditLogListRelationFilter
 }, "id" | "slug">
 
 export type StoreOrderByWithAggregationInput = {
@@ -223,6 +238,11 @@ export type StoreCreateInput = {
   slug: string
   createdAt?: Date | string
   memberships?: Prisma.MembershipCreateNestedManyWithoutStoreInput
+  invites?: Prisma.InviteCreateNestedManyWithoutStoreInput
+  products?: Prisma.ProductCreateNestedManyWithoutStoreInput
+  coupons?: Prisma.CouponCreateNestedManyWithoutStoreInput
+  orders?: Prisma.OrderCreateNestedManyWithoutStoreInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutStoreInput
 }
 
 export type StoreUncheckedCreateInput = {
@@ -231,6 +251,11 @@ export type StoreUncheckedCreateInput = {
   slug: string
   createdAt?: Date | string
   memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutStoreInput
+  invites?: Prisma.InviteUncheckedCreateNestedManyWithoutStoreInput
+  products?: Prisma.ProductUncheckedCreateNestedManyWithoutStoreInput
+  coupons?: Prisma.CouponUncheckedCreateNestedManyWithoutStoreInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutStoreInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutStoreInput
 }
 
 export type StoreUpdateInput = {
@@ -239,6 +264,11 @@ export type StoreUpdateInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   memberships?: Prisma.MembershipUpdateManyWithoutStoreNestedInput
+  invites?: Prisma.InviteUpdateManyWithoutStoreNestedInput
+  products?: Prisma.ProductUpdateManyWithoutStoreNestedInput
+  coupons?: Prisma.CouponUpdateManyWithoutStoreNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutStoreNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutStoreNestedInput
 }
 
 export type StoreUncheckedUpdateInput = {
@@ -247,6 +277,11 @@ export type StoreUncheckedUpdateInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   memberships?: Prisma.MembershipUncheckedUpdateManyWithoutStoreNestedInput
+  invites?: Prisma.InviteUncheckedUpdateManyWithoutStoreNestedInput
+  products?: Prisma.ProductUncheckedUpdateManyWithoutStoreNestedInput
+  coupons?: Prisma.CouponUncheckedUpdateManyWithoutStoreNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutStoreNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutStoreNestedInput
 }
 
 export type StoreCreateManyInput = {
@@ -316,11 +351,86 @@ export type StoreUpdateOneRequiredWithoutMembershipsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.StoreUpdateToOneWithWhereWithoutMembershipsInput, Prisma.StoreUpdateWithoutMembershipsInput>, Prisma.StoreUncheckedUpdateWithoutMembershipsInput>
 }
 
+export type StoreCreateNestedOneWithoutInvitesInput = {
+  create?: Prisma.XOR<Prisma.StoreCreateWithoutInvitesInput, Prisma.StoreUncheckedCreateWithoutInvitesInput>
+  connectOrCreate?: Prisma.StoreCreateOrConnectWithoutInvitesInput
+  connect?: Prisma.StoreWhereUniqueInput
+}
+
+export type StoreUpdateOneRequiredWithoutInvitesNestedInput = {
+  create?: Prisma.XOR<Prisma.StoreCreateWithoutInvitesInput, Prisma.StoreUncheckedCreateWithoutInvitesInput>
+  connectOrCreate?: Prisma.StoreCreateOrConnectWithoutInvitesInput
+  upsert?: Prisma.StoreUpsertWithoutInvitesInput
+  connect?: Prisma.StoreWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.StoreUpdateToOneWithWhereWithoutInvitesInput, Prisma.StoreUpdateWithoutInvitesInput>, Prisma.StoreUncheckedUpdateWithoutInvitesInput>
+}
+
+export type StoreCreateNestedOneWithoutProductsInput = {
+  create?: Prisma.XOR<Prisma.StoreCreateWithoutProductsInput, Prisma.StoreUncheckedCreateWithoutProductsInput>
+  connectOrCreate?: Prisma.StoreCreateOrConnectWithoutProductsInput
+  connect?: Prisma.StoreWhereUniqueInput
+}
+
+export type StoreUpdateOneRequiredWithoutProductsNestedInput = {
+  create?: Prisma.XOR<Prisma.StoreCreateWithoutProductsInput, Prisma.StoreUncheckedCreateWithoutProductsInput>
+  connectOrCreate?: Prisma.StoreCreateOrConnectWithoutProductsInput
+  upsert?: Prisma.StoreUpsertWithoutProductsInput
+  connect?: Prisma.StoreWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.StoreUpdateToOneWithWhereWithoutProductsInput, Prisma.StoreUpdateWithoutProductsInput>, Prisma.StoreUncheckedUpdateWithoutProductsInput>
+}
+
+export type StoreCreateNestedOneWithoutCouponsInput = {
+  create?: Prisma.XOR<Prisma.StoreCreateWithoutCouponsInput, Prisma.StoreUncheckedCreateWithoutCouponsInput>
+  connectOrCreate?: Prisma.StoreCreateOrConnectWithoutCouponsInput
+  connect?: Prisma.StoreWhereUniqueInput
+}
+
+export type StoreUpdateOneRequiredWithoutCouponsNestedInput = {
+  create?: Prisma.XOR<Prisma.StoreCreateWithoutCouponsInput, Prisma.StoreUncheckedCreateWithoutCouponsInput>
+  connectOrCreate?: Prisma.StoreCreateOrConnectWithoutCouponsInput
+  upsert?: Prisma.StoreUpsertWithoutCouponsInput
+  connect?: Prisma.StoreWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.StoreUpdateToOneWithWhereWithoutCouponsInput, Prisma.StoreUpdateWithoutCouponsInput>, Prisma.StoreUncheckedUpdateWithoutCouponsInput>
+}
+
+export type StoreCreateNestedOneWithoutOrdersInput = {
+  create?: Prisma.XOR<Prisma.StoreCreateWithoutOrdersInput, Prisma.StoreUncheckedCreateWithoutOrdersInput>
+  connectOrCreate?: Prisma.StoreCreateOrConnectWithoutOrdersInput
+  connect?: Prisma.StoreWhereUniqueInput
+}
+
+export type StoreUpdateOneRequiredWithoutOrdersNestedInput = {
+  create?: Prisma.XOR<Prisma.StoreCreateWithoutOrdersInput, Prisma.StoreUncheckedCreateWithoutOrdersInput>
+  connectOrCreate?: Prisma.StoreCreateOrConnectWithoutOrdersInput
+  upsert?: Prisma.StoreUpsertWithoutOrdersInput
+  connect?: Prisma.StoreWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.StoreUpdateToOneWithWhereWithoutOrdersInput, Prisma.StoreUpdateWithoutOrdersInput>, Prisma.StoreUncheckedUpdateWithoutOrdersInput>
+}
+
+export type StoreCreateNestedOneWithoutAuditLogsInput = {
+  create?: Prisma.XOR<Prisma.StoreCreateWithoutAuditLogsInput, Prisma.StoreUncheckedCreateWithoutAuditLogsInput>
+  connectOrCreate?: Prisma.StoreCreateOrConnectWithoutAuditLogsInput
+  connect?: Prisma.StoreWhereUniqueInput
+}
+
+export type StoreUpdateOneRequiredWithoutAuditLogsNestedInput = {
+  create?: Prisma.XOR<Prisma.StoreCreateWithoutAuditLogsInput, Prisma.StoreUncheckedCreateWithoutAuditLogsInput>
+  connectOrCreate?: Prisma.StoreCreateOrConnectWithoutAuditLogsInput
+  upsert?: Prisma.StoreUpsertWithoutAuditLogsInput
+  connect?: Prisma.StoreWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.StoreUpdateToOneWithWhereWithoutAuditLogsInput, Prisma.StoreUpdateWithoutAuditLogsInput>, Prisma.StoreUncheckedUpdateWithoutAuditLogsInput>
+}
+
 export type StoreCreateWithoutMembershipsInput = {
   id?: string
   name: string
   slug: string
   createdAt?: Date | string
+  invites?: Prisma.InviteCreateNestedManyWithoutStoreInput
+  products?: Prisma.ProductCreateNestedManyWithoutStoreInput
+  coupons?: Prisma.CouponCreateNestedManyWithoutStoreInput
+  orders?: Prisma.OrderCreateNestedManyWithoutStoreInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutStoreInput
 }
 
 export type StoreUncheckedCreateWithoutMembershipsInput = {
@@ -328,6 +438,11 @@ export type StoreUncheckedCreateWithoutMembershipsInput = {
   name: string
   slug: string
   createdAt?: Date | string
+  invites?: Prisma.InviteUncheckedCreateNestedManyWithoutStoreInput
+  products?: Prisma.ProductUncheckedCreateNestedManyWithoutStoreInput
+  coupons?: Prisma.CouponUncheckedCreateNestedManyWithoutStoreInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutStoreInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutStoreInput
 }
 
 export type StoreCreateOrConnectWithoutMembershipsInput = {
@@ -351,6 +466,11 @@ export type StoreUpdateWithoutMembershipsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  invites?: Prisma.InviteUpdateManyWithoutStoreNestedInput
+  products?: Prisma.ProductUpdateManyWithoutStoreNestedInput
+  coupons?: Prisma.CouponUpdateManyWithoutStoreNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutStoreNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutStoreNestedInput
 }
 
 export type StoreUncheckedUpdateWithoutMembershipsInput = {
@@ -358,6 +478,331 @@ export type StoreUncheckedUpdateWithoutMembershipsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  invites?: Prisma.InviteUncheckedUpdateManyWithoutStoreNestedInput
+  products?: Prisma.ProductUncheckedUpdateManyWithoutStoreNestedInput
+  coupons?: Prisma.CouponUncheckedUpdateManyWithoutStoreNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutStoreNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutStoreNestedInput
+}
+
+export type StoreCreateWithoutInvitesInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  memberships?: Prisma.MembershipCreateNestedManyWithoutStoreInput
+  products?: Prisma.ProductCreateNestedManyWithoutStoreInput
+  coupons?: Prisma.CouponCreateNestedManyWithoutStoreInput
+  orders?: Prisma.OrderCreateNestedManyWithoutStoreInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutStoreInput
+}
+
+export type StoreUncheckedCreateWithoutInvitesInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutStoreInput
+  products?: Prisma.ProductUncheckedCreateNestedManyWithoutStoreInput
+  coupons?: Prisma.CouponUncheckedCreateNestedManyWithoutStoreInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutStoreInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutStoreInput
+}
+
+export type StoreCreateOrConnectWithoutInvitesInput = {
+  where: Prisma.StoreWhereUniqueInput
+  create: Prisma.XOR<Prisma.StoreCreateWithoutInvitesInput, Prisma.StoreUncheckedCreateWithoutInvitesInput>
+}
+
+export type StoreUpsertWithoutInvitesInput = {
+  update: Prisma.XOR<Prisma.StoreUpdateWithoutInvitesInput, Prisma.StoreUncheckedUpdateWithoutInvitesInput>
+  create: Prisma.XOR<Prisma.StoreCreateWithoutInvitesInput, Prisma.StoreUncheckedCreateWithoutInvitesInput>
+  where?: Prisma.StoreWhereInput
+}
+
+export type StoreUpdateToOneWithWhereWithoutInvitesInput = {
+  where?: Prisma.StoreWhereInput
+  data: Prisma.XOR<Prisma.StoreUpdateWithoutInvitesInput, Prisma.StoreUncheckedUpdateWithoutInvitesInput>
+}
+
+export type StoreUpdateWithoutInvitesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.MembershipUpdateManyWithoutStoreNestedInput
+  products?: Prisma.ProductUpdateManyWithoutStoreNestedInput
+  coupons?: Prisma.CouponUpdateManyWithoutStoreNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutStoreNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutStoreNestedInput
+}
+
+export type StoreUncheckedUpdateWithoutInvitesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.MembershipUncheckedUpdateManyWithoutStoreNestedInput
+  products?: Prisma.ProductUncheckedUpdateManyWithoutStoreNestedInput
+  coupons?: Prisma.CouponUncheckedUpdateManyWithoutStoreNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutStoreNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutStoreNestedInput
+}
+
+export type StoreCreateWithoutProductsInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  memberships?: Prisma.MembershipCreateNestedManyWithoutStoreInput
+  invites?: Prisma.InviteCreateNestedManyWithoutStoreInput
+  coupons?: Prisma.CouponCreateNestedManyWithoutStoreInput
+  orders?: Prisma.OrderCreateNestedManyWithoutStoreInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutStoreInput
+}
+
+export type StoreUncheckedCreateWithoutProductsInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutStoreInput
+  invites?: Prisma.InviteUncheckedCreateNestedManyWithoutStoreInput
+  coupons?: Prisma.CouponUncheckedCreateNestedManyWithoutStoreInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutStoreInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutStoreInput
+}
+
+export type StoreCreateOrConnectWithoutProductsInput = {
+  where: Prisma.StoreWhereUniqueInput
+  create: Prisma.XOR<Prisma.StoreCreateWithoutProductsInput, Prisma.StoreUncheckedCreateWithoutProductsInput>
+}
+
+export type StoreUpsertWithoutProductsInput = {
+  update: Prisma.XOR<Prisma.StoreUpdateWithoutProductsInput, Prisma.StoreUncheckedUpdateWithoutProductsInput>
+  create: Prisma.XOR<Prisma.StoreCreateWithoutProductsInput, Prisma.StoreUncheckedCreateWithoutProductsInput>
+  where?: Prisma.StoreWhereInput
+}
+
+export type StoreUpdateToOneWithWhereWithoutProductsInput = {
+  where?: Prisma.StoreWhereInput
+  data: Prisma.XOR<Prisma.StoreUpdateWithoutProductsInput, Prisma.StoreUncheckedUpdateWithoutProductsInput>
+}
+
+export type StoreUpdateWithoutProductsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.MembershipUpdateManyWithoutStoreNestedInput
+  invites?: Prisma.InviteUpdateManyWithoutStoreNestedInput
+  coupons?: Prisma.CouponUpdateManyWithoutStoreNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutStoreNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutStoreNestedInput
+}
+
+export type StoreUncheckedUpdateWithoutProductsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.MembershipUncheckedUpdateManyWithoutStoreNestedInput
+  invites?: Prisma.InviteUncheckedUpdateManyWithoutStoreNestedInput
+  coupons?: Prisma.CouponUncheckedUpdateManyWithoutStoreNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutStoreNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutStoreNestedInput
+}
+
+export type StoreCreateWithoutCouponsInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  memberships?: Prisma.MembershipCreateNestedManyWithoutStoreInput
+  invites?: Prisma.InviteCreateNestedManyWithoutStoreInput
+  products?: Prisma.ProductCreateNestedManyWithoutStoreInput
+  orders?: Prisma.OrderCreateNestedManyWithoutStoreInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutStoreInput
+}
+
+export type StoreUncheckedCreateWithoutCouponsInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutStoreInput
+  invites?: Prisma.InviteUncheckedCreateNestedManyWithoutStoreInput
+  products?: Prisma.ProductUncheckedCreateNestedManyWithoutStoreInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutStoreInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutStoreInput
+}
+
+export type StoreCreateOrConnectWithoutCouponsInput = {
+  where: Prisma.StoreWhereUniqueInput
+  create: Prisma.XOR<Prisma.StoreCreateWithoutCouponsInput, Prisma.StoreUncheckedCreateWithoutCouponsInput>
+}
+
+export type StoreUpsertWithoutCouponsInput = {
+  update: Prisma.XOR<Prisma.StoreUpdateWithoutCouponsInput, Prisma.StoreUncheckedUpdateWithoutCouponsInput>
+  create: Prisma.XOR<Prisma.StoreCreateWithoutCouponsInput, Prisma.StoreUncheckedCreateWithoutCouponsInput>
+  where?: Prisma.StoreWhereInput
+}
+
+export type StoreUpdateToOneWithWhereWithoutCouponsInput = {
+  where?: Prisma.StoreWhereInput
+  data: Prisma.XOR<Prisma.StoreUpdateWithoutCouponsInput, Prisma.StoreUncheckedUpdateWithoutCouponsInput>
+}
+
+export type StoreUpdateWithoutCouponsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.MembershipUpdateManyWithoutStoreNestedInput
+  invites?: Prisma.InviteUpdateManyWithoutStoreNestedInput
+  products?: Prisma.ProductUpdateManyWithoutStoreNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutStoreNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutStoreNestedInput
+}
+
+export type StoreUncheckedUpdateWithoutCouponsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.MembershipUncheckedUpdateManyWithoutStoreNestedInput
+  invites?: Prisma.InviteUncheckedUpdateManyWithoutStoreNestedInput
+  products?: Prisma.ProductUncheckedUpdateManyWithoutStoreNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutStoreNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutStoreNestedInput
+}
+
+export type StoreCreateWithoutOrdersInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  memberships?: Prisma.MembershipCreateNestedManyWithoutStoreInput
+  invites?: Prisma.InviteCreateNestedManyWithoutStoreInput
+  products?: Prisma.ProductCreateNestedManyWithoutStoreInput
+  coupons?: Prisma.CouponCreateNestedManyWithoutStoreInput
+  auditLogs?: Prisma.AuditLogCreateNestedManyWithoutStoreInput
+}
+
+export type StoreUncheckedCreateWithoutOrdersInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutStoreInput
+  invites?: Prisma.InviteUncheckedCreateNestedManyWithoutStoreInput
+  products?: Prisma.ProductUncheckedCreateNestedManyWithoutStoreInput
+  coupons?: Prisma.CouponUncheckedCreateNestedManyWithoutStoreInput
+  auditLogs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutStoreInput
+}
+
+export type StoreCreateOrConnectWithoutOrdersInput = {
+  where: Prisma.StoreWhereUniqueInput
+  create: Prisma.XOR<Prisma.StoreCreateWithoutOrdersInput, Prisma.StoreUncheckedCreateWithoutOrdersInput>
+}
+
+export type StoreUpsertWithoutOrdersInput = {
+  update: Prisma.XOR<Prisma.StoreUpdateWithoutOrdersInput, Prisma.StoreUncheckedUpdateWithoutOrdersInput>
+  create: Prisma.XOR<Prisma.StoreCreateWithoutOrdersInput, Prisma.StoreUncheckedCreateWithoutOrdersInput>
+  where?: Prisma.StoreWhereInput
+}
+
+export type StoreUpdateToOneWithWhereWithoutOrdersInput = {
+  where?: Prisma.StoreWhereInput
+  data: Prisma.XOR<Prisma.StoreUpdateWithoutOrdersInput, Prisma.StoreUncheckedUpdateWithoutOrdersInput>
+}
+
+export type StoreUpdateWithoutOrdersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.MembershipUpdateManyWithoutStoreNestedInput
+  invites?: Prisma.InviteUpdateManyWithoutStoreNestedInput
+  products?: Prisma.ProductUpdateManyWithoutStoreNestedInput
+  coupons?: Prisma.CouponUpdateManyWithoutStoreNestedInput
+  auditLogs?: Prisma.AuditLogUpdateManyWithoutStoreNestedInput
+}
+
+export type StoreUncheckedUpdateWithoutOrdersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.MembershipUncheckedUpdateManyWithoutStoreNestedInput
+  invites?: Prisma.InviteUncheckedUpdateManyWithoutStoreNestedInput
+  products?: Prisma.ProductUncheckedUpdateManyWithoutStoreNestedInput
+  coupons?: Prisma.CouponUncheckedUpdateManyWithoutStoreNestedInput
+  auditLogs?: Prisma.AuditLogUncheckedUpdateManyWithoutStoreNestedInput
+}
+
+export type StoreCreateWithoutAuditLogsInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  memberships?: Prisma.MembershipCreateNestedManyWithoutStoreInput
+  invites?: Prisma.InviteCreateNestedManyWithoutStoreInput
+  products?: Prisma.ProductCreateNestedManyWithoutStoreInput
+  coupons?: Prisma.CouponCreateNestedManyWithoutStoreInput
+  orders?: Prisma.OrderCreateNestedManyWithoutStoreInput
+}
+
+export type StoreUncheckedCreateWithoutAuditLogsInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutStoreInput
+  invites?: Prisma.InviteUncheckedCreateNestedManyWithoutStoreInput
+  products?: Prisma.ProductUncheckedCreateNestedManyWithoutStoreInput
+  coupons?: Prisma.CouponUncheckedCreateNestedManyWithoutStoreInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutStoreInput
+}
+
+export type StoreCreateOrConnectWithoutAuditLogsInput = {
+  where: Prisma.StoreWhereUniqueInput
+  create: Prisma.XOR<Prisma.StoreCreateWithoutAuditLogsInput, Prisma.StoreUncheckedCreateWithoutAuditLogsInput>
+}
+
+export type StoreUpsertWithoutAuditLogsInput = {
+  update: Prisma.XOR<Prisma.StoreUpdateWithoutAuditLogsInput, Prisma.StoreUncheckedUpdateWithoutAuditLogsInput>
+  create: Prisma.XOR<Prisma.StoreCreateWithoutAuditLogsInput, Prisma.StoreUncheckedCreateWithoutAuditLogsInput>
+  where?: Prisma.StoreWhereInput
+}
+
+export type StoreUpdateToOneWithWhereWithoutAuditLogsInput = {
+  where?: Prisma.StoreWhereInput
+  data: Prisma.XOR<Prisma.StoreUpdateWithoutAuditLogsInput, Prisma.StoreUncheckedUpdateWithoutAuditLogsInput>
+}
+
+export type StoreUpdateWithoutAuditLogsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.MembershipUpdateManyWithoutStoreNestedInput
+  invites?: Prisma.InviteUpdateManyWithoutStoreNestedInput
+  products?: Prisma.ProductUpdateManyWithoutStoreNestedInput
+  coupons?: Prisma.CouponUpdateManyWithoutStoreNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutStoreNestedInput
+}
+
+export type StoreUncheckedUpdateWithoutAuditLogsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  memberships?: Prisma.MembershipUncheckedUpdateManyWithoutStoreNestedInput
+  invites?: Prisma.InviteUncheckedUpdateManyWithoutStoreNestedInput
+  products?: Prisma.ProductUncheckedUpdateManyWithoutStoreNestedInput
+  coupons?: Prisma.CouponUncheckedUpdateManyWithoutStoreNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutStoreNestedInput
 }
 
 
@@ -367,10 +812,20 @@ export type StoreUncheckedUpdateWithoutMembershipsInput = {
 
 export type StoreCountOutputType = {
   memberships: number
+  invites: number
+  products: number
+  coupons: number
+  orders: number
+  auditLogs: number
 }
 
 export type StoreCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   memberships?: boolean | StoreCountOutputTypeCountMembershipsArgs
+  invites?: boolean | StoreCountOutputTypeCountInvitesArgs
+  products?: boolean | StoreCountOutputTypeCountProductsArgs
+  coupons?: boolean | StoreCountOutputTypeCountCouponsArgs
+  orders?: boolean | StoreCountOutputTypeCountOrdersArgs
+  auditLogs?: boolean | StoreCountOutputTypeCountAuditLogsArgs
 }
 
 /**
@@ -390,6 +845,41 @@ export type StoreCountOutputTypeCountMembershipsArgs<ExtArgs extends runtime.Typ
   where?: Prisma.MembershipWhereInput
 }
 
+/**
+ * StoreCountOutputType without action
+ */
+export type StoreCountOutputTypeCountInvitesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.InviteWhereInput
+}
+
+/**
+ * StoreCountOutputType without action
+ */
+export type StoreCountOutputTypeCountProductsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ProductWhereInput
+}
+
+/**
+ * StoreCountOutputType without action
+ */
+export type StoreCountOutputTypeCountCouponsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CouponWhereInput
+}
+
+/**
+ * StoreCountOutputType without action
+ */
+export type StoreCountOutputTypeCountOrdersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.OrderWhereInput
+}
+
+/**
+ * StoreCountOutputType without action
+ */
+export type StoreCountOutputTypeCountAuditLogsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AuditLogWhereInput
+}
+
 
 export type StoreSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -397,6 +887,11 @@ export type StoreSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   slug?: boolean
   createdAt?: boolean
   memberships?: boolean | Prisma.Store$membershipsArgs<ExtArgs>
+  invites?: boolean | Prisma.Store$invitesArgs<ExtArgs>
+  products?: boolean | Prisma.Store$productsArgs<ExtArgs>
+  coupons?: boolean | Prisma.Store$couponsArgs<ExtArgs>
+  orders?: boolean | Prisma.Store$ordersArgs<ExtArgs>
+  auditLogs?: boolean | Prisma.Store$auditLogsArgs<ExtArgs>
   _count?: boolean | Prisma.StoreCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["store"]>
 
@@ -412,6 +907,11 @@ export type StoreSelectScalar = {
 export type StoreOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "slug" | "createdAt", ExtArgs["result"]["store"]>
 export type StoreInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   memberships?: boolean | Prisma.Store$membershipsArgs<ExtArgs>
+  invites?: boolean | Prisma.Store$invitesArgs<ExtArgs>
+  products?: boolean | Prisma.Store$productsArgs<ExtArgs>
+  coupons?: boolean | Prisma.Store$couponsArgs<ExtArgs>
+  orders?: boolean | Prisma.Store$ordersArgs<ExtArgs>
+  auditLogs?: boolean | Prisma.Store$auditLogsArgs<ExtArgs>
   _count?: boolean | Prisma.StoreCountOutputTypeDefaultArgs<ExtArgs>
 }
 
@@ -419,6 +919,11 @@ export type $StorePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   name: "Store"
   objects: {
     memberships: Prisma.$MembershipPayload<ExtArgs>[]
+    invites: Prisma.$InvitePayload<ExtArgs>[]
+    products: Prisma.$ProductPayload<ExtArgs>[]
+    coupons: Prisma.$CouponPayload<ExtArgs>[]
+    orders: Prisma.$OrderPayload<ExtArgs>[]
+    auditLogs: Prisma.$AuditLogPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -766,6 +1271,11 @@ readonly fields: StoreFieldRefs;
 export interface Prisma__StoreClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   memberships<T extends Prisma.Store$membershipsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Store$membershipsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MembershipPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  invites<T extends Prisma.Store$invitesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Store$invitesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvitePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  products<T extends Prisma.Store$productsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Store$productsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProductPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  coupons<T extends Prisma.Store$couponsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Store$couponsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CouponPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  orders<T extends Prisma.Store$ordersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Store$ordersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  auditLogs<T extends Prisma.Store$auditLogsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Store$auditLogsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AuditLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1168,6 +1678,126 @@ export type Store$membershipsArgs<ExtArgs extends runtime.Types.Extensions.Inter
   take?: number
   skip?: number
   distinct?: Prisma.MembershipScalarFieldEnum | Prisma.MembershipScalarFieldEnum[]
+}
+
+/**
+ * Store.invites
+ */
+export type Store$invitesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Invite
+   */
+  select?: Prisma.InviteSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Invite
+   */
+  omit?: Prisma.InviteOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.InviteInclude<ExtArgs> | null
+  where?: Prisma.InviteWhereInput
+  orderBy?: Prisma.InviteOrderByWithRelationInput | Prisma.InviteOrderByWithRelationInput[]
+  cursor?: Prisma.InviteWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.InviteScalarFieldEnum | Prisma.InviteScalarFieldEnum[]
+}
+
+/**
+ * Store.products
+ */
+export type Store$productsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Product
+   */
+  select?: Prisma.ProductSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Product
+   */
+  omit?: Prisma.ProductOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ProductInclude<ExtArgs> | null
+  where?: Prisma.ProductWhereInput
+  orderBy?: Prisma.ProductOrderByWithRelationInput | Prisma.ProductOrderByWithRelationInput[]
+  cursor?: Prisma.ProductWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ProductScalarFieldEnum | Prisma.ProductScalarFieldEnum[]
+}
+
+/**
+ * Store.coupons
+ */
+export type Store$couponsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Coupon
+   */
+  select?: Prisma.CouponSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Coupon
+   */
+  omit?: Prisma.CouponOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CouponInclude<ExtArgs> | null
+  where?: Prisma.CouponWhereInput
+  orderBy?: Prisma.CouponOrderByWithRelationInput | Prisma.CouponOrderByWithRelationInput[]
+  cursor?: Prisma.CouponWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CouponScalarFieldEnum | Prisma.CouponScalarFieldEnum[]
+}
+
+/**
+ * Store.orders
+ */
+export type Store$ordersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Order
+   */
+  select?: Prisma.OrderSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Order
+   */
+  omit?: Prisma.OrderOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OrderInclude<ExtArgs> | null
+  where?: Prisma.OrderWhereInput
+  orderBy?: Prisma.OrderOrderByWithRelationInput | Prisma.OrderOrderByWithRelationInput[]
+  cursor?: Prisma.OrderWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.OrderScalarFieldEnum | Prisma.OrderScalarFieldEnum[]
+}
+
+/**
+ * Store.auditLogs
+ */
+export type Store$auditLogsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AuditLog
+   */
+  select?: Prisma.AuditLogSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AuditLog
+   */
+  omit?: Prisma.AuditLogOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AuditLogInclude<ExtArgs> | null
+  where?: Prisma.AuditLogWhereInput
+  orderBy?: Prisma.AuditLogOrderByWithRelationInput | Prisma.AuditLogOrderByWithRelationInput[]
+  cursor?: Prisma.AuditLogWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AuditLogScalarFieldEnum | Prisma.AuditLogScalarFieldEnum[]
 }
 
 /**

@@ -78,9 +78,9 @@ Sensitive changes such as role changes/removals, invite actions, ownership trans
 
 ## Product surfaces
 
-1. Node/Express API (first).
-2. Simple staff dashboard (later): account, store, members, products, orders.
-3. Public storefront (later): product browse and mock checkout.
+1. Node/Express API (implemented first).
+2. Staff dashboard: account, store, members, products, coupons, orders, invitations, and audit views (frontend is implemented; verify API/UI flows).
+3. Public storefront: product browse and mock checkout (frontend is implemented; mock payment only).
 
 The API is developed in small slices before building a broad UI.
 
@@ -101,3 +101,20 @@ Real users, real production deployment, real payment processor, real email provi
 ## Product success for this learner
 
 The learner can explain and change the code, run the app locally, complete representative user flows, and demonstrate how tenant isolation and access control are enforced. Finishing features is less important than understanding the implementation and its failure cases.
+
+## Current implementation differences to resolve
+
+This PRD remains the intended product behavior; it is not a claim that each rule
+already matches the code. As of 2026-10-04:
+
+- The order state enum and API use `PROCESSING` and `COMPLETED`, while the target
+  story above describes a path ending in `DELIVERED`. Choose the desired names and
+  update the schema, migration, API, frontend, and docs consistently.
+- The role matrix grants audit-log visibility to OWNER, ADMIN, MANAGER, and SUPPORT.
+  The current audit route permits only OWNER and ADMIN. Confirm the intended policy
+  before writing role-boundary tests.
+- The target says sensitive action and audit writes should share a transaction.
+  Current mock payment and order-note flows perform their audit writes separately;
+  those are known consistency gaps to fix if the transaction rule remains.
+- The current frontend implements the storefront and staff dashboard. Email and
+  payment remain local/mock by design; no real email or payment provider is wired.

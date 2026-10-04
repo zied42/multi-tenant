@@ -22,7 +22,7 @@ Do not switch database to PostgreSQL because an input design file says so. The h
 HTTP client
   -> Express global middleware (requestId, requestLogger, helmet, CORS,
      rate limit, JSON limit)
-  -> route (/auth, later /stores and /s/:slug)
+  -> route (/auth, /stores, /invites, /s/:slug)
   -> route middleware (authenticate, membership, permission, validation)
   -> controller (HTTP in/out only)
   -> service (business rules and Prisma operations)
@@ -49,7 +49,7 @@ prisma/
 docs/
 ```
 
-Each feature module keeps its routes, controller, service, and schema together. The actual business modules are currently scaffolds.
+Each feature module keeps its routes, controller, service, and schema together. Store, membership, invite, product, storefront, coupon, order, and audit API implementations are now in place. The frontend lives under `web/src`, including account flows, store selector, dashboard, and public storefront. The Vite development proxy forwards `/api/*` to Express on `127.0.0.1:3000`; run `npm run dev` at the repository root to start both services.
 
 ## Tenant isolation
 
@@ -68,16 +68,20 @@ Never treat an opaque ID, a client-supplied `storeId`, a JWT role claim, or UI v
 
 - Passwords: Argon2id hashes; never store or return plaintext passwords.
 - Access token: JWT signed HS256, 15-minute lifetime, `sub`, `iat`, `exp`, `iss`, `aud`; no store role claim. Current helper already signs/verifies these.
-- Refresh token: cryptographically random opaque token, SHA-256 hash stored in DB, expires after 7 days, and is rotated on every refresh. Reuse of a revoked token revokes active tokens in its family.
+- Refresh token: cryptographically random opaque token, SHA-256 hash stored in DB, expires after 7 days, and is rotated on every refresh. `rotatedAt` records rotation time. A replay within the 10-second grace interval returns `401 REFRESH_RETRY` without issuing tokens or revoking the family; a later replay revokes active tokens in the family. Refresh reads lock the token row (`SELECT ... FOR UPDATE`) so concurrent MySQL transactions see the latest rotation state.
 - Password reset: high-entropy one-use token, stored as a hash, expires after 30 minutes. Reset revokes refresh sessions.
 - Email verification: high-entropy one-use token, stored as a hash, expires after 24 hours. Login requires a verified email.
+- The refresh token is delivered only in an HttpOnly cookie (`SameSite=Lax`, `Path=/api/auth`; `Secure` in production). The browser-facing `/api/auth` path is preserved by the Vite proxy while Express receives `/auth`.
+- The React app keeps access tokens in memory. Startup silently refreshes through the cookie, then loads `/auth/me`. Authenticated API calls that fail with an expired/invalid access-token 401 refresh once and retry once.
+- Refresh operations use same-tab single-flight and the Web Locks API across same-origin tabs. The backend row lock and short grace response also protect clients that issue simultaneous refreshes without the browser lock.
+- Logout and password changes broadcast a logout message to other same-origin tabs through `BroadcastChannel`, clearing their in-memory sessions.
 - Logout revokes the refresh-token family; already-issued access tokens remain valid for up to 15 minutes.
 - Development-only API responses expose `devToken` so the learner can exercise reset and verification without email. Do not expose these responses on a public server.
 - Login uses the same public error for unknown email and wrong password.
 
 ## Core data model
 
-Current schema contains `User`, `Store`, `Membership`, `RefreshToken`, `PasswordResetToken`, and `EmailVerificationToken`, plus the `Role` enum. `User` has nullable `emailVerifiedAt`; refresh records carry a `familyId` for reuse handling. Remaining planned models:
+Current schema contains `User`, `Store`, `Membership`, `RefreshToken`, `PasswordResetToken`, `EmailVerificationToken`, `Invite`, `Product`, `Coupon`, `Order`, `OrderItem`, `OrderNote`, and `AuditLog`, plus `Role`, `ProductStatus`, `CouponType`, and `OrderStatus` enums. `User` has nullable `emailVerifiedAt`; refresh records carry a `familyId` and nullable `rotatedAt` for reuse handling.
 
 - `Invite(storeId, email, role, tokenHash, expiresAt, usedAt, invitedBy)`
 - `Product(storeId, name, price, stock, status, ...)`
@@ -87,7 +91,7 @@ Current schema contains `User`, `Store`, `Membership`, `RefreshToken`, `Password
 - `OrderNote(orderId, authorId, body, createdAt)`
 - `AuditLog(storeId, actorId, action, targetId, metadata, createdAt)`
 
-Use integer minor units for money. Add appropriate unique constraints and indexes. Use transactions for store+OWNER creation, invite acceptance, checkout, and audited sensitive changes.
+Use integer minor units for money. Models have tenant indexes and relevant unique constraints. Transactions are used for store+OWNER creation, invite acceptance, checkout, order state changes, and inventory restoration. One known gap: mock payment updates the order and then writes its audit event as a separate operation. Make both writes one transaction before treating audit completeness as an invariant. Order notes and their audit event also currently use separate writes.
 
 ## Checkout and state invariants
 
@@ -98,6 +102,14 @@ Use integer minor units for money. Add appropriate unique constraints and indexe
 - Create order and item price snapshots in the same transaction.
 - Payment is mock-only and can transition only a valid pending order.
 - Enforce allowed state transitions in a central service/policy; do not accept arbitrary status from a client.
+- Current enum/workflow uses `PROCESSING` and `COMPLETED`; the PRD currently says `DELIVERED`. Decide the intended state model and align schema, API, UI, and docs.
+
+## Current verification gaps
+
+- Product and order list endpoints currently return the matching collection without pagination. This is acceptable for the local learning dataset; pagination is a later performance lesson.
+- The PRD grants audit-log access to MANAGER and SUPPORT, but the current audit router permits only OWNER and ADMIN. Resolve the permission policy before adding role tests.
+- Permission matrices, cross-tenant object access, invitation expiry/email binding, checkout races, and refund/cancellation inventory behavior still need walkthroughs or regression tests.
+- Email verification and password-reset tokens are generated for local development. No email transport is configured.
 
 ## Errors and observability
 
@@ -105,4 +117,4 @@ Use a consistent JSON error response with code/message/requestId. Do not send st
 
 ## Route ownership
 
-All auth routes are defined in `src/modules/auth/auth.routes.ts`. `src/app.ts` mounts that router once at `/auth`; keep route definitions out of `app.ts`.
+All feature routes are defined in their module routers. `src/app.ts` mounts auth, stores, invites, and storefront routers once; keep individual route definitions out of `app.ts`.

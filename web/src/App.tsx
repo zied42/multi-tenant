@@ -1,10 +1,35 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, refreshAccessToken } from "./api";
 import { broadcastLogout, subscribeToLogout } from "./auth-coordination";
+import { DashboardView } from "./components/DashboardView";
+import { StorefrontView } from "./components/StorefrontView";
+import { StoreSelect } from "./components/StoreSelect";
 import "./styles.css";
+import type { Role, User } from "./types";
 
-type Screen = "login" | "register" | "verify" | "forgot" | "reset" | "account";
-type User = { id: string; email: string; emailVerifiedAt: string | null; createdAt: string };
+type Screen =
+  | "login"
+  | "register"
+  | "verify"
+  | "forgot"
+  | "reset"
+  | "stores"
+  | "dashboard"
+  | "account"
+  | "storefront";
+
+function publicRouteFromPath(pathname: string): { isStorefront: boolean; slug: string } {
+  const match = pathname.match(/^\/s\/([^/]+)\/?$/);
+  if (match) {
+    try {
+      return { isStorefront: true, slug: decodeURIComponent(match[1]) };
+    } catch {
+      return { isStorefront: true, slug: "" };
+    }
+  }
+  return { isStorefront: pathname === "/storefront", slug: "" };
+}
+
 type Session = { accessToken: string };
 type AuthResponse = {
   accessToken: string;
@@ -12,7 +37,14 @@ type AuthResponse = {
   user?: User;
 };
 
-function Brand({ light = false }: { light?: boolean }) {
+interface ActiveStore {
+  id: string;
+  name: string;
+  slug: string;
+  role: Role;
+}
+
+export function Brand({ light = false }: { light?: boolean }) {
   return (
     <div className={"brand" + (light ? " brand-light" : "")}>
       <span className="brand-symbol" aria-hidden="true">
@@ -61,8 +93,15 @@ function Field(props: {
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [screen, setScreen] = useState<Screen>("login");
+  const [screen, setScreen] = useState<Screen>(() =>
+    publicRouteFromPath(window.location.pathname).isStorefront ? "storefront" : "login",
+  );
   const [user, setUser] = useState<User | null>(null);
+  const [activeStore, setActiveStore] = useState<ActiveStore | null>(null);
+  const [storefrontSlug, setStorefrontSlug] = useState<string>(
+    () => publicRouteFromPath(window.location.pathname).slug,
+  );
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -78,6 +117,7 @@ function App() {
     return subscribeToLogout(() => {
       setSession(null);
       setUser(null);
+      setActiveStore(null);
       setScreen("login");
       setNotice("You signed out in another tab.");
       setError("");
@@ -85,10 +125,23 @@ function App() {
   }, []);
 
   useEffect(() => {
+    function handleHistoryNavigation() {
+      const route = publicRouteFromPath(window.location.pathname);
+      if (route.isStorefront) {
+        setStorefrontSlug(route.slug);
+        setScreen("storefront");
+      } else {
+        setScreen(session ? (activeStore ? "dashboard" : "stores") : "login");
+      }
+    }
+    window.addEventListener("popstate", handleHistoryNavigation);
+    return () => window.removeEventListener("popstate", handleHistoryNavigation);
+  }, [session, activeStore]);
+
+  useEffect(() => {
     let active = true;
     async function restore() {
       try {
-        // Remove the old JavaScript-readable session after switching to HttpOnly cookies.
         try {
           window.sessionStorage.removeItem("storeforge.auth.session");
         } catch {
@@ -103,25 +156,32 @@ function App() {
         if (active) {
           setSession({ accessToken });
           setUser(profile.user);
-          setScreen("account");
+          if (!publicRouteFromPath(window.location.pathname).isStorefront) {
+            setScreen("stores");
+          }
         }
       } catch {
         if (active) {
           setSession(null);
           setUser(null);
-          setScreen("login");
+          if (!publicRouteFromPath(window.location.pathname).isStorefront) {
+            setScreen("login");
+          }
         }
       } finally {
         if (active) setRestoring(false);
       }
     }
     void restore();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, []);
 
   function clearLocalSession() {
     setSession(null);
     setUser(null);
+    setActiveStore(null);
     setScreen("login");
   }
 
@@ -135,7 +195,10 @@ function App() {
     setScreen(next);
   }
 
-  async function run(event: FormEvent<HTMLFormElement>, action: () => Promise<void>) {
+  async function run(
+    event: FormEvent<HTMLFormElement>,
+    action: () => Promise<void>,
+  ) {
     event.preventDefault();
     clearMessages();
     setBusy(true);
@@ -144,9 +207,15 @@ function App() {
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === "EMAIL_NOT_VERIFIED") {
         setScreen("verify");
-        setNotice("Verify your email before signing in. You can request a fresh link below.");
+        setNotice(
+          "Verify your email before signing in. You can request a fresh token below.",
+        );
       } else {
-        setError(caught instanceof Error ? caught.message : "Something went wrong. Please try again.");
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Something went wrong. Please try again.",
+        );
       }
     } finally {
       setBusy(false);
@@ -155,23 +224,30 @@ function App() {
 
   async function register(event: FormEvent<HTMLFormElement>) {
     await run(event, async () => {
-      const result = await api<{ user: User; devToken?: string }>("/auth/register", {
-        method: "POST", body: { email, password },
-      });
+      const result = await api<{ user: User; devToken?: string }>(
+        "/auth/register",
+        {
+          method: "POST",
+          body: { email, password },
+        },
+      );
       setEmail(result.user.email);
       setToken(result.devToken ?? "");
       setPassword("");
       setScreen("verify");
-      setNotice(result.devToken
-        ? "Account created. Your local verification token is ready below."
-        : "Account created. Check your email for a verification link.");
+      setNotice(
+        result.devToken
+          ? "Account created! Your local verification token is filled in below."
+          : "Account created. Please verify your email address.",
+      );
     });
   }
 
   async function login(event: FormEvent<HTMLFormElement>) {
     await run(event, async () => {
       const result = await api<AuthResponse>("/auth/login", {
-        method: "POST", body: { email, password },
+        method: "POST",
+        body: { email, password },
       });
       const next = { accessToken: result.accessToken };
       setSession(next);
@@ -179,22 +255,25 @@ function App() {
       const profile = result.user
         ? { user: result.user }
         : await api<{ user: User }>("/auth/me", {
-          accessToken: next.accessToken,
-          onAccessToken: (nextToken) => setSession({ accessToken: nextToken }),
-          onSessionExpired: clearLocalSession,
-        });
+            accessToken: next.accessToken,
+            onAccessToken: (nextToken) => setSession({ accessToken: nextToken }),
+            onSessionExpired: clearLocalSession,
+          });
       setUser(profile.user);
-      setScreen("account");
-      setNotice("You’re signed in. Your workspace is ready.");
+      setScreen("stores");
+      setNotice("Signed in successfully. Welcome to Storeforge.");
     });
   }
 
   async function verifyEmail(event: FormEvent<HTMLFormElement>) {
     await run(event, async () => {
-      await api("/auth/email-verification/complete", { method: "POST", body: { token } });
+      await api("/auth/email-verification/complete", {
+        method: "POST",
+        body: { token },
+      });
       setToken("");
       setScreen("login");
-      setNotice("Email verified. You can sign in now.");
+      setNotice("Email verified successfully! You can sign in now.");
     });
   }
 
@@ -202,15 +281,23 @@ function App() {
     clearMessages();
     setBusy(true);
     try {
-      const result = await api<{ devToken?: string }>("/auth/email-verification/request", {
-        method: "POST", body: { email },
-      });
+      const result = await api<{ devToken?: string }>(
+        "/auth/email-verification/request",
+        {
+          method: "POST",
+          body: { email },
+        },
+      );
       if (result.devToken) setToken(result.devToken);
-      setNotice(result.devToken
-        ? "Local verification token refreshed below."
-        : "If the account needs verification, instructions have been sent.");
+      setNotice(
+        result.devToken
+          ? "Local verification token generated below."
+          : "Verification instructions have been prepared.",
+      );
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not request verification.");
+      setError(
+        caught instanceof Error ? caught.message : "Could not request verification.",
+      );
     } finally {
       setBusy(false);
     }
@@ -218,26 +305,33 @@ function App() {
 
   async function requestReset(event: FormEvent<HTMLFormElement>) {
     await run(event, async () => {
-      const result = await api<{ devToken?: string }>("/auth/password-reset/request", {
-        method: "POST", body: { email },
-      });
+      const result = await api<{ devToken?: string }>(
+        "/auth/password-reset/request",
+        {
+          method: "POST",
+          body: { email },
+        },
+      );
       setToken(result.devToken ?? "");
       setScreen("reset");
-      setNotice(result.devToken
-        ? "Local reset token ready. It expires after 30 minutes."
-        : "If the account exists, reset instructions have been sent.");
+      setNotice(
+        result.devToken
+          ? "Local reset token prepared below (valid for 30 minutes)."
+          : "Reset instructions have been sent.",
+      );
     });
   }
 
   async function completeReset(event: FormEvent<HTMLFormElement>) {
     await run(event, async () => {
       await api("/auth/password-reset/complete", {
-        method: "POST", body: { token, newPassword },
+        method: "POST",
+        body: { token, newPassword },
       });
       setToken("");
       setNewPassword("");
       setScreen("login");
-      setNotice("Password reset complete. Sign in with your new password.");
+      setNotice("Password reset complete. You can now sign in.");
     });
   }
 
@@ -248,15 +342,19 @@ function App() {
     try {
       const accessToken = await refreshAccessToken();
       setSession({ accessToken });
-      setNotice("Session refreshed. The previous refresh token has been retired.");
+      setNotice("Session refreshed successfully with new rotated token.");
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === "REFRESH_RETRY") {
-        setError("Another tab is finishing a refresh. Please try again shortly.");
+        setError("Another refresh is in progress. Please try again in a moment.");
         return;
       }
       clearLocalSession();
       broadcastLogout();
-      setError(caught instanceof Error ? caught.message : "Session expired. Please sign in again.");
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Session expired. Please sign in again.",
+      );
     } finally {
       setBusy(false);
     }
@@ -275,10 +373,11 @@ function App() {
       broadcastLogout();
       setSession(null);
       setUser(null);
+      setActiveStore(null);
       setCurrentPassword("");
       setNewPassword("");
       setScreen("login");
-      setNotice("Password updated. Sign in again with your new password.");
+      setNotice("Password updated. Please sign in with your new password.");
     });
   }
 
@@ -288,149 +387,643 @@ function App() {
     try {
       await api("/auth/logout", { method: "POST" });
     } catch {
-      // Always remove this browser's saved credentials, even if the API is unavailable.
+      // Clean up browser state even if API fails
     } finally {
       broadcastLogout();
       setSession(null);
       setUser(null);
+      setActiveStore(null);
       setScreen("login");
-      setNotice("You’ve signed out.");
+      setNotice("You have signed out.");
       setBusy(false);
     }
   }
 
+  function handleSelectStore(
+    id: string,
+    role: Role,
+    name: string,
+    slug: string,
+  ) {
+    setActiveStore({ id, role, name, slug });
+    setScreen("dashboard");
+  }
+
+  function handleOpenStorefront(slug: string) {
+    setStorefrontSlug(slug);
+    const path = slug ? `/s/${encodeURIComponent(slug)}` : "/storefront";
+    if (window.location.pathname !== path) window.history.pushState({}, "", path);
+    setScreen("storefront");
+  }
+
+  function handleCloseStorefront() {
+    window.history.pushState({}, "", "/");
+    setScreen(session ? (activeStore ? "dashboard" : "stores") : "login");
+  }
+
   if (restoring) {
-    return <main className="restore-screen"><div className="restore-card"><span className="spinner spinner-dark" /> Restoring your session…</div></main>;
+    return (
+      <div className="restore-screen">
+        <div className="restore-card">
+          <span className="spinner spinner-dark" /> Loading Storeforge...
+        </div>
+      </div>
+    );
+  }
+
+  // Public Storefront View
+  if (screen === "storefront") {
+    return (
+      <StorefrontView
+        slug={storefrontSlug}
+        onBackToDashboard={
+          handleCloseStorefront
+        }
+      />
+    );
   }
 
   const passwordType = showPassword ? "text" : "password";
   const visibilityToggle = (
-    <button className="input-action" type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>
+    <button
+      className="input-action"
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      aria-label={showPassword ? "Hide password" : "Show password"}
+    >
       {showPassword ? "HIDE" : "SHOW"}
     </button>
   );
 
-  return (
-    <main className={"app-shell" + (screen === "account" ? " account-shell" : "")}>
-      <section className="story-panel">
-        <div className="story-glow story-glow-a" />
-        <div className="story-glow story-glow-b" />
-        <header className="story-header">
-          <Brand light />
-          <span className="story-caption">YOUR COMMERCE WORKSPACE</span>
+  // ----------------------------------------------------
+  // LOGGED-IN VIEW: Full-width Professional SaaS Console
+  // ----------------------------------------------------
+  if (session && user) {
+    return (
+      <div className="portal-layout">
+        <header className="portal-navbar">
+          <div className="portal-navbar-inner">
+            <div className="portal-nav-left">
+              <button
+                className="portal-brand-btn"
+                onClick={() => setScreen("stores")}
+                title="Go to Stores"
+              >
+                <Brand />
+              </button>
+              <span className="portal-badge">STAFF CONSOLE</span>
+
+              {activeStore && (
+                <div className="active-store-pill">
+                  <span className="store-pill-name">{activeStore.name}</span>
+                  <code className="store-pill-slug">/s/{activeStore.slug}</code>
+                  <span className={`role-badge role-${activeStore.role.toLowerCase()}`}>
+                    {activeStore.role}
+                  </span>
+                  <button
+                    className="button-link store-pill-switch"
+                    onClick={() => setScreen("stores")}
+                  >
+                    Switch
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <nav className="portal-nav-links">
+              <button
+                className={`portal-nav-btn ${screen === "stores" ? "is-active" : ""}`}
+                onClick={() => setScreen("stores")}
+              >
+                🏬 Stores
+              </button>
+              {activeStore && (
+                <button
+                  className={`portal-nav-btn ${screen === "dashboard" ? "is-active" : ""}`}
+                  onClick={() => setScreen("dashboard")}
+                >
+                  📊 Dashboard
+                </button>
+              )}
+              {activeStore && (
+                <button
+                  className="portal-nav-btn"
+                  onClick={() => handleOpenStorefront(activeStore.slug)}
+                >
+                  🌐 Storefront ↗
+                </button>
+              )}
+              <button
+                className={`portal-nav-btn ${screen === "account" ? "is-active" : ""}`}
+                onClick={() => setScreen("account")}
+              >
+                ⚙️ Account
+              </button>
+            </nav>
+
+            <div className="portal-nav-right">
+              <div className="user-indicator" title={user.email}>
+                <span className="user-avatar-sm">
+                  {user.email.slice(0, 1).toUpperCase()}
+                </span>
+                <span className="user-email-text">{user.email}</span>
+                {user.emailVerifiedAt ? (
+                  <span className="verified-dot" title="Email verified" />
+                ) : (
+                  <span
+                    className="unverified-pill"
+                    onClick={() => setScreen("account")}
+                    title="Email not verified - click to verify"
+                  >
+                    Unverified
+                  </span>
+                )}
+              </div>
+              <button
+                className="button button-ghost button-sm"
+                onClick={logout}
+                disabled={busy}
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
         </header>
-        <div className="story-body">
-          <p className="eyebrow eyebrow-inverse"><i /> A BETTER WAY TO BUILD</p>
-          <h1>Make room<br />for <em>what’s next.</em></h1>
-          <p className="story-description">One thoughtful workspace for every store you’re growing. Your team, your products, your next big idea—all in one place.</p>
-          <div className="story-points">
-            <span><b>01</b> Every store, one account</span>
-            <span><b>02</b> Your team, your way</span>
-            <span><b>03</b> Built to keep moving</span>
-          </div>
-        </div>
-        <div className="mini-dashboard" aria-hidden="true">
-          <div className="mini-top"><span>YOUR STORES</span><span className="mini-menu">•••</span></div>
-          <strong>A little momentum</strong>
-          <div className="mini-stats"><b>03</b><span>workspaces<br />and counting</span><i>↗</i></div>
-          <div className="chart-bars">{Array.from({ length: 16 }, (_, index) => <i key={index} style={{ height: (15 + ((index * 17) % 47)) + "px" }} />)}</div>
-          <div className="mini-bottom"><span><i /> YOUR SPACE IS READY</span><span>JUST GETTING STARTED</span></div>\n+        </div>
-        <footer className="story-footer"><span>MADE FOR THE INDEPENDENT</span><span>EST. FOR WHAT’S NEXT&nbsp; ↗</span></footer>
-      </section>
-\n+      <section className="auth-panel">
-        <header className="panel-header"><Brand /><span className="private-label"><i /> PRIVATE WORKSPACE</span></header>
-        {screen === "account" && user ? (
-          <div className="panel-content account-content">
-            <div className="heading-block"><p className="eyebrow"><i /> YOUR ACCOUNT</p><h2>Good to have<br />you back.</h2><p className="subtitle">You’re signed in and ready to keep building.</p></div>
-            <div className="profile-card">
-              <div className="avatar">{user.email.slice(0, 1).toUpperCase()}</div>
-              <div className="profile-info"><strong>{user.email}</strong><span>{user.emailVerifiedAt ? "Verified account" : "Email not verified"}</span></div>
-              <span className={"verified-badge" + (user.emailVerifiedAt ? " is-verified" : "")}><i />{user.emailVerifiedAt ? "VERIFIED" : "PENDING"}</span>
-            </div>
-            {!user.emailVerifiedAt && <div className="verify-callout"><span className="callout-symbol">!</span><div><strong>Verify your email</strong><p>Confirm your address to finish setting up your account.</p></div><button className="link-button" onClick={() => { setEmail(user.email); navigate("verify"); }}>Continue ↗</button></div>}
-            <div className="session-actions">
-              <button className="button button-secondary" onClick={refreshSession} disabled={busy}>{busy ? <span className="spinner spinner-dark" /> : <RefreshIcon />} Refresh session</button>
-              <button className="button button-ghost" onClick={logout} disabled={busy}>Sign out <span>↗</span></button>
-            </div>
-            <div className="section-rule"><span /> ACCOUNT SECURITY <span /></div>
-            <form className="form-stack security-form" onSubmit={changePassword}>
-              <Field label="Current password" type="password" value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />
-              <Field label="New password" type="password" value={newPassword} onChange={setNewPassword} placeholder="At least 10 characters" autoComplete="new-password" minLength={10} />
-              <button className="button button-outline" type="submit" disabled={busy}>{busy ? <span className="spinner spinner-dark" /> : null} Update password <span>↗</span></button>
-            </form>
-            <p className="account-created">Account created {new Date(user.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long" })}</p>
-          </div>
-        ) : (
-          <div className="panel-content">
-            {screen === "login" && <>
-              <div className="heading-block"><p className="eyebrow"><i /> WELCOME BACK</p><h2>Sign in to<br />your workspace.</h2><p className="subtitle">Pick up where you left off. Your stores are waiting.</p></div>
-              <form className="form-stack" onSubmit={login}>
-                <Field label="Email address" type="email" value={email} onChange={setEmail} placeholder="you@example.com" autoComplete="email" />
-                <div className="password-label"><span className="field-label">Password</span><button className="link-button" type="button" onClick={() => navigate("forgot")}>Forgot password?</button></div>
-                <Field label="Password" type={passwordType} value={password} onChange={setPassword} placeholder="Enter your password" autoComplete="current-password" action={visibilityToggle} />
-                <button className="button button-primary" type="submit" disabled={busy}>{busy ? <span className="spinner" /> : null} Sign in <span>↗</span></button>
-              </form>
-              <p className="switch-copy">New to Storeforge? <button className="link-button" onClick={() => navigate("register")}>Create an account ↗</button></p>
-            </>}
 
-            {screen === "register" && <>
-              <div className="heading-block"><p className="eyebrow"><i /> GET STARTED</p><h2>Your next chapter<br />starts here.</h2><p className="subtitle">Create one account for all the stores you’ll build.</p></div>
-              <form className="form-stack" onSubmit={register}>
-                <Field label="Email address" type="email" value={email} onChange={setEmail} placeholder="you@example.com" autoComplete="email" />
-                <Field label="Create password" type={passwordType} value={password} onChange={setPassword} placeholder="At least 10 characters" autoComplete="new-password" minLength={10} action={visibilityToggle} />
-                <p className="field-note">Use 10 or more characters to keep your account protected.</p>
-                <button className="button button-primary" type="submit" disabled={busy}>{busy ? <span className="spinner" /> : null} Create account <span>↗</span></button>
-              </form>
-              <p className="switch-copy">Already have an account? <button className="link-button" onClick={() => navigate("login")}>Sign in ↗</button></p>
-            </>}
-
-            {screen === "verify" && <>
-              <div className="heading-block"><p className="eyebrow"><i /> ONE LAST THING</p><h2>Check your<br />inbox.</h2><p className="subtitle">Verify your email address to unlock your Storeforge account.</p></div>
-              <form className="form-stack" onSubmit={verifyEmail}>
-                <Field label="Email address" type="email" value={email} onChange={setEmail} placeholder="you@example.com" autoComplete="email" />
-                <Field label="Verification token" value={token} onChange={setToken} placeholder="Paste your verification token" autoComplete="one-time-code" maxLength={128} />
-                <button className="button button-primary" type="submit" disabled={busy}>{busy ? <span className="spinner" /> : null} Verify email <span>↗</span></button>
-              </form>
-              <button className="link-button resend-link" onClick={resendVerification} disabled={busy}>Didn’t get a link? Resend it ↗</button>
-              <p className="switch-copy">Ready to sign in? <button className="link-button" onClick={() => navigate("login")}>Back to sign in</button></p>
-            </>}
-
-            {screen === "forgot" && <>
-              <div className="heading-block"><p className="eyebrow"><i /> ACCOUNT RECOVERY</p><h2>Let’s get you<br />back in.</h2><p className="subtitle">Enter your email and we’ll prepare a secure password reset.</p></div>
-              <form className="form-stack" onSubmit={requestReset}>
-                <Field label="Email address" type="email" value={email} onChange={setEmail} placeholder="you@example.com" autoComplete="email" />
-                <button className="button button-primary" type="submit" disabled={busy}>{busy ? <span className="spinner" /> : null} Send reset link <span>↗</span></button>
-              </form>
-              <p className="switch-copy">Remember your password? <button className="link-button" onClick={() => navigate("login")}>Back to sign in</button></p>
-            </>}
-
-            {screen === "reset" && <>
-              <div className="heading-block"><p className="eyebrow"><i /> CREATE A NEW PASSWORD</p><h2>A fresh start<br />for your account.</h2><p className="subtitle">Choose a new password you haven’t used before.</p></div>
-              <form className="form-stack" onSubmit={completeReset}>
-                <Field label="Reset token" value={token} onChange={setToken} placeholder="Paste your reset token" autoComplete="one-time-code" maxLength={128} />
-                <Field label="New password" type={passwordType} value={newPassword} onChange={setNewPassword} placeholder="At least 10 characters" autoComplete="new-password" minLength={10} action={visibilityToggle} />
-                <button className="button button-primary" type="submit" disabled={busy}>{busy ? <span className="spinner" /> : null} Reset password <span>↗</span></button>
-              </form>
-              <p className="switch-copy">Need another link? <button className="link-button" onClick={() => navigate("forgot")}>Request a new reset</button></p>
-            </>}
-
-            {notice && <div className="feedback success-feedback" role="status"><b>✓</b><span>{notice}</span></div>}
-            {error && <div className="feedback error-feedback" role="alert"><b>!</b><span>{error}</span></div>}
+        {(notice || error) && (
+          <div className="portal-alert-bar">
+            {notice && (
+              <div className="feedback success-feedback" role="status">
+                <b>✓</b>
+                <span>{notice}</span>
+                <button className="dismiss-btn" onClick={() => setNotice("")}>
+                  ×
+                </button>
+              </div>
+            )}
+            {error && (
+              <div className="feedback error-feedback" role="alert">
+                <b>!</b>
+                <span>{error}</span>
+                <button className="dismiss-btn" onClick={() => setError("")}>
+                  ×
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {screen === "account" && (notice || error) && <div className="account-feedback">
-          {notice && <div className="feedback success-feedback" role="status"><b>✓</b><span>{notice}</span></div>}
-          {error && <div className="feedback error-feedback" role="alert"><b>!</b><span>{error}</span></div>}
-        </div>}
-        <footer className="panel-footer"><span>© 2026 STOREFORGE</span><span>MADE FOR WHAT’S NEXT</span></footer>
-      </section>
-    </main>
+        <main className="portal-main">
+          {screen === "stores" && (
+            <StoreSelect
+              user={user}
+              accessToken={session.accessToken}
+              onAccessToken={(nextToken) =>
+                setSession({ accessToken: nextToken })
+              }
+              onSessionExpired={clearLocalSession}
+              onSelectStore={handleSelectStore}
+              onOpenStorefront={handleOpenStorefront}
+            />
+          )}
+
+          {screen === "dashboard" && activeStore && (
+            <DashboardView
+              storeId={activeStore.id}
+              storeName={activeStore.name}
+              storeSlug={activeStore.slug}
+              userRole={activeStore.role}
+              user={user}
+              accessToken={session.accessToken}
+              onAccessToken={(nextToken) =>
+                setSession({ accessToken: nextToken })
+              }
+              onSessionExpired={clearLocalSession}
+              onSwitchStore={() => setScreen("stores")}
+              onOpenStorefront={handleOpenStorefront}
+            />
+          )}
+
+          {screen === "account" && (
+            <div className="account-container">
+              <div className="heading-block">
+                <p className="eyebrow">
+                  <i /> USER SETTINGS
+                </p>
+                <h2>Account &amp; Security</h2>
+                <p className="subtitle">
+                  Manage your credentials, verify your identity, and inspect active session tokens.
+                </p>
+              </div>
+
+              <div className="account-cards-grid">
+                <div className="card-box">
+                  <h4>Profile Information</h4>
+                  <div className="profile-card">
+                    <div className="avatar">
+                      {user.email.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div className="profile-info">
+                      <strong>{user.email}</strong>
+                      <span>User ID: {user.id}</span>
+                      <span>
+                        Joined:{" "}
+                        {new Date(user.createdAt).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </span>
+                    </div>
+                    <span
+                      className={
+                        "verified-badge" +
+                        (user.emailVerifiedAt ? " is-verified" : "")
+                      }
+                    >
+                      <i />
+                      {user.emailVerifiedAt ? "VERIFIED" : "PENDING VERIFICATION"}
+                    </span>
+                  </div>
+
+                  {!user.emailVerifiedAt && (
+                    <div className="verify-callout">
+                      <span className="callout-symbol">!</span>
+                      <div>
+                        <strong>Your email is not verified yet</strong>
+                        <p>
+                          Verify your email to ensure uninterrupted account access.
+                        </p>
+                      </div>
+                      <button
+                        className="button button-secondary button-sm"
+                        onClick={() => {
+                          setEmail(user.email);
+                          navigate("verify");
+                        }}
+                      >
+                        Verify Email Now ↗
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="session-actions">
+                    <button
+                      className="button button-secondary button-sm"
+                      onClick={refreshSession}
+                      disabled={busy}
+                    >
+                      {busy ? (
+                        <span className="spinner spinner-dark" />
+                      ) : (
+                        <RefreshIcon />
+                      )}
+                      Refresh Access Token (Rotate)
+                    </button>
+                    <button
+                      className="button button-ghost button-sm"
+                      onClick={logout}
+                      disabled={busy}
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+
+                <div className="card-box">
+                  <h4>Change Password</h4>
+                  <p className="tab-subtitle">
+                    Enter your current password and a new password (min. 10 characters).
+                  </p>
+                  <form
+                    className="form-stack security-form"
+                    onSubmit={changePassword}
+                  >
+                    <Field
+                      label="Current Password"
+                      type="password"
+                      value={currentPassword}
+                      onChange={setCurrentPassword}
+                      autoComplete="current-password"
+                    />
+                    <Field
+                      label="New Password"
+                      type="password"
+                      value={newPassword}
+                      onChange={setNewPassword}
+                      placeholder="At least 10 characters"
+                      autoComplete="new-password"
+                      minLength={10}
+                    />
+                    <button
+                      className="button button-primary button-sm"
+                      type="submit"
+                      disabled={busy}
+                    >
+                      {busy ? <span className="spinner" /> : null}
+                      Update Password
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------
+  // LOGGED-OUT VIEW: Clean, Centered Professional Auth
+  // ----------------------------------------------------
+  return (
+    <div className="auth-page">
+      <header className="auth-topbar">
+        <Brand />
+        <button
+          className="button button-secondary button-sm"
+          onClick={() => handleOpenStorefront("")}
+        >
+          Explore Public Storefront ↗
+        </button>
+      </header>
+
+      <main className="auth-container">
+        <div className="auth-card">
+          <div className="auth-card-header">
+            <h1 className="auth-title">
+              {screen === "login" && "Sign In"}
+              {screen === "register" && "Create an Account"}
+              {screen === "verify" && "Verify Email"}
+              {screen === "forgot" && "Reset Password"}
+              {screen === "reset" && "Set New Password"}
+            </h1>
+            <p className="auth-subtitle">
+              {screen === "login" &&
+                "Access your store workspaces and manage orders, inventory, and staff."}
+              {screen === "register" &&
+                "Set up your merchant account to start creating store workspaces."}
+              {screen === "verify" &&
+                "Confirm your email address to activate your merchant account."}
+              {screen === "forgot" &&
+                "Enter your account email to receive a password reset token."}
+              {screen === "reset" &&
+                "Enter your reset token and pick a strong new password."}
+            </p>
+          </div>
+
+          {screen === "verify" ? (
+            <div className="auth-step-indicator" aria-label="Registration step 2 of 2">
+              <span className="auth-step is-complete">1&nbsp; Account created</span>
+              <span className="auth-step is-active">2&nbsp; Verify email</span>
+            </div>
+          ) : (
+            <div className="auth-tabs">
+              <button
+                className={`auth-tab-btn ${screen === "login" ? "is-active" : ""}`}
+                onClick={() => navigate("login")}
+              >
+                Sign In
+              </button>
+              <button
+                className={`auth-tab-btn ${screen === "register" ? "is-active" : ""}`}
+                onClick={() => navigate("register")}
+              >
+                Register
+              </button>
+            </div>
+          )}
+
+          {notice && (
+            <div className="feedback success-feedback" role="status">
+              <b>✓</b>
+              <span>{notice}</span>
+            </div>
+          )}
+          {error && (
+            <div className="feedback error-feedback" role="alert">
+              <b>!</b>
+              <span>{error}</span>
+            </div>
+          )}
+
+          {screen === "login" && (
+            <form className="form-stack" onSubmit={login}>
+              <Field
+                label="Email Address"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                placeholder="merchant@example.com"
+                autoComplete="email"
+              />
+              <div className="password-label">
+                <span className="field-label">Password</span>
+                <button
+                  className="link-button"
+                  type="button"
+                  onClick={() => navigate("forgot")}
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <Field
+                label="Password"
+                type={passwordType}
+                value={password}
+                onChange={setPassword}
+                placeholder="Enter your password"
+                autoComplete="current-password"
+                action={visibilityToggle}
+              />
+              <button
+                className="button button-primary"
+                type="submit"
+                disabled={busy}
+              >
+                {busy ? <span className="spinner" /> : null} Sign In to Storeforge
+              </button>
+            </form>
+          )}
+
+          {screen === "register" && (
+            <form className="form-stack" onSubmit={register}>
+              <Field
+                label="Email Address"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                placeholder="merchant@example.com"
+                autoComplete="email"
+              />
+              <Field
+                label="Create Password"
+                type={passwordType}
+                value={password}
+                onChange={setPassword}
+                placeholder="Minimum 10 characters"
+                autoComplete="new-password"
+                minLength={10}
+                action={visibilityToggle}
+              />
+              <p className="field-note">
+                Passwords must be at least 10 characters in length.
+              </p>
+              <button
+                className="button button-primary"
+                type="submit"
+                disabled={busy}
+              >
+                {busy ? <span className="spinner" /> : null} Create Merchant Account
+              </button>
+            </form>
+          )}
+
+          {screen === "verify" && (
+            <form className="form-stack" onSubmit={verifyEmail}>
+              <div className="verify-step-card" role="status">
+                <strong>Step 2 of 2 · Verify your email</strong>
+                <p>
+                  Your account was created. Verify the address below before signing
+                  in. Enter the token from your email, or generate a local token
+                  during development.
+                </p>
+              </div>
+              <Field
+                label="Email Address"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                placeholder="merchant@example.com"
+                autoComplete="email"
+              />
+              <Field
+                label="Verification Token"
+                value={token}
+                onChange={setToken}
+                placeholder="Paste token or use auto-generated dev token"
+                autoComplete="one-time-code"
+                maxLength={128}
+              />
+              <button
+                className="button button-primary"
+                type="submit"
+                disabled={busy}
+              >
+                {busy ? <span className="spinner" /> : null} Confirm &amp; Verify Email
+              </button>
+              <button
+                type="button"
+                className="button button-ghost button-sm"
+                onClick={resendVerification}
+                disabled={busy}
+              >
+                Resend / Generate Dev Token ↻
+              </button>
+              <p className="switch-copy">
+                Already verified?{" "}
+                <button
+                  className="link-button"
+                  type="button"
+                  onClick={() => navigate("login")}
+                >
+                  Back to Sign In
+                </button>
+              </p>
+            </form>
+          )}
+
+          {screen === "forgot" && (
+            <form className="form-stack" onSubmit={requestReset}>
+              <Field
+                label="Email Address"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                placeholder="merchant@example.com"
+                autoComplete="email"
+              />
+              <button
+                className="button button-primary"
+                type="submit"
+                disabled={busy}
+              >
+                {busy ? <span className="spinner" /> : null} Request Password Reset
+              </button>
+              <p className="switch-copy">
+                Remember your password?{" "}
+                <button
+                  className="link-button"
+                  type="button"
+                  onClick={() => navigate("login")}
+                >
+                  Back to Sign In
+                </button>
+              </p>
+            </form>
+          )}
+
+          {screen === "reset" && (
+            <form className="form-stack" onSubmit={completeReset}>
+              <Field
+                label="Reset Token"
+                value={token}
+                onChange={setToken}
+                placeholder="Paste reset token"
+                autoComplete="one-time-code"
+                maxLength={128}
+              />
+              <Field
+                label="New Password"
+                type={passwordType}
+                value={newPassword}
+                onChange={setNewPassword}
+                placeholder="Minimum 10 characters"
+                autoComplete="new-password"
+                minLength={10}
+                action={visibilityToggle}
+              />
+              <button
+                className="button button-primary"
+                type="submit"
+                disabled={busy}
+              >
+                {busy ? <span className="spinner" /> : null} Update Password &amp; Sign In
+              </button>
+              <p className="switch-copy">
+                Need another token?{" "}
+                <button
+                  className="link-button"
+                  type="button"
+                  onClick={() => navigate("forgot")}
+                >
+                  Request Again
+                </button>
+              </p>
+            </form>
+          )}
+        </div>
+
+        <footer className="auth-footer">
+          <span>STOREFORGE &copy; 2026</span>
+          <span>MULTI-TENANT COMMERCE PLATFORM</span>
+        </footer>
+      </main>
+    </div>
   );
 }
 
 function RefreshIcon() {
-  return <svg className="refresh-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.6 8A6.9 6.9 0 0 0 4 7M3.4 12a6.9 6.9 0 0 0 12.6 1M3.5 3.7v3.7h3.7m9.3 9v-3.7h-3.7" /></svg>;
+  return (
+    <svg
+      className="refresh-icon"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path d="M16.6 8A6.9 6.9 0 0 0 4 7M3.4 12a6.9 6.9 0 0 0 12.6 1M3.5 3.7v3.7h3.7m9.3 9v-3.7h-3.7" />
+    </svg>
+  );
 }
 
 export default App;

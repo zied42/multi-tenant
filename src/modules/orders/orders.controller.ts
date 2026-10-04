@@ -1,0 +1,14 @@
+import type { RequestHandler } from "express";
+import { AppError } from "../../lib/errors.js";
+import { addOrderNote, changeOrderStatus, checkout, getOrder, guestOrder, listOrders, mockPay, refundOrder } from "./orders.service.js";
+const str = (v: unknown, label: string) => { if (typeof v !== "string") throw new AppError(400, "INVALID_PARAMETER", `${label} is invalid`); return v; };
+const param = (v: string | string[] | undefined, label: string) => str(v, label);
+const publicToken = (req: Parameters<RequestHandler>[0]) => { const value = req.get("x-order-token"); if (!value || value.length > 128) throw new AppError(401, "ORDER_TOKEN_REQUIRED", "Provide the order token in the X-Order-Token header"); return value; };
+export const checkoutController: RequestHandler = async (req, res, next) => { try { res.status(201).json(await checkout(param(req.params.slug, "Store slug"), req.body)); } catch (e) { next(e); } };
+export const guestOrderController: RequestHandler = async (req, res, next) => { try { res.status(200).json({ order: await guestOrder(param(req.params.slug, "Store slug"), param(req.params.orderId, "Order ID"), publicToken(req)) }); } catch (e) { next(e); } };
+export const mockPayController: RequestHandler = async (req, res, next) => { try { res.status(200).json({ order: await mockPay(param(req.params.slug, "Store slug"), param(req.params.orderId, "Order ID"), publicToken(req)) }); } catch (e) { next(e); } };
+export const listOrdersController: RequestHandler = async (_req, res, next) => { try { res.status(200).json({ orders: await listOrders(str(res.locals.storeId, "Store ID")) }); } catch (e) { next(e); } };
+export const getOrderController: RequestHandler = async (req, res, next) => { try { res.status(200).json({ order: await getOrder(str(res.locals.storeId, "Store ID"), param(req.params.orderId, "Order ID")) }); } catch (e) { next(e); } };
+export const changeOrderStatusController: RequestHandler = async (req, res, next) => { try { res.status(200).json({ order: await changeOrderStatus(str(res.locals.storeId, "Store ID"), str(res.locals.userId, "User ID"), param(req.params.orderId, "Order ID"), req.body.status) }); } catch (e) { next(e); } };
+export const refundOrderController: RequestHandler = async (req, res, next) => { try { res.status(200).json({ order: await refundOrder(str(res.locals.storeId, "Store ID"), str(res.locals.userId, "User ID"), param(req.params.orderId, "Order ID")) }); } catch (e) { next(e); } };
+export const addOrderNoteController: RequestHandler = async (req, res, next) => { try { res.status(201).json({ note: await addOrderNote(str(res.locals.storeId, "Store ID"), str(res.locals.userId, "User ID"), param(req.params.orderId, "Order ID"), req.body.body) }); } catch (e) { next(e); } };

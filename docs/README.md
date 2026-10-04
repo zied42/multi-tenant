@@ -14,8 +14,21 @@ Storeforge is a hands-on learning project: a multi-tenant commerce app built fro
 
 ## Current reality
 
-These documents describe both the **target learning project** and the **current implementation**. The current implementation is early: Express infrastructure and basic register/login/current-user authentication exist; most business module files are still stubs. See `AI_HANDOFF.md` for a dated status snapshot. A planned endpoint or security control is not complete merely because it appears in these docs.
+These documents distinguish the **target learning project** from the **current implementation**. The main backend modules and the React frontend are implemented. The frontend build and focused refresh-token tests are reported passing in the handoff; the rest of the API still needs permission, tenant-isolation, and checkout walkthroughs. There are known differences between the PRD and current API around order states and audit roles, and mock payment writes its audit event after the order update rather than in the same transaction. See `AI_HANDOFF.md` for the dated status and next steps.
+
+## Run locally
+
+From the repository root in PowerShell:
+
+```powershell
+npm run dev
+```
+
+This starts the API on port 3000 and the Vite frontend on port 5173. If Vite reports
+`ECONNREFUSED` for proxied `/auth/*` requests, start the API (`npm run dev:server`)
+or restart both services with `npm run dev`. Check API availability at
+`http://127.0.0.1:3000/health`.
 
 ## Decision history
 
-The supplied starter documents proposed PostgreSQL, Docker, CI, and a security-review project. The learner selected a locally installed MySQL server and explicitly clarified that this is not a real-life deployment. This documentation therefore treats MySQL as the database choice, and production infrastructure as optional learning/stretch work. Password reset and other account lifecycle flows remain in scope.
+The supplied starter documents proposed PostgreSQL, Docker, CI, and a security-review project. The learner selected a locally installed MySQL server and explicitly clarified that this is not a real-life deployment. This documentation therefore treats MySQL as the database choice, and production infrastructure as optional learning/stretch work. Password reset and other account lifecycle flows remain in scope. Email, payment processing, and deployment integrations remain local/mock or out of scope.

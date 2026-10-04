@@ -15,6 +15,27 @@ enum Role {
   VIEWER
 }
 
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
 model User {
   id                      String                   @id @default(cuid())
   email                   String                   @unique @db.VarChar(254)
@@ -25,6 +46,8 @@ model User {
   refreshTokens           RefreshToken[]
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
+  invitesCreated          Invite[]                 @relation("InviteCreator")
+  orderNotes              OrderNote[]
 }
 
 model Store {
@@ -33,6 +56,11 @@ model Store {
   slug        String       @unique @db.VarChar(30)
   createdAt   DateTime     @default(now())
   memberships Membership[]
+  invites     Invite[]
+  products    Product[]
+  coupons     Coupon[]
+  orders      Order[]
+  auditLogs   AuditLog[]
 }
 
 model Membership {
@@ -88,4 +116,125 @@ model EmailVerificationToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
+}
+
+model Invite {
+  id          String    @id @default(cuid())
+  storeId     String
+  email       String    @db.VarChar(254)
+  role        Role
+  tokenHash   String    @unique @db.Char(64)
+  invitedById String
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  usedAt      DateTime?
+  revokedAt   DateTime?
+
+  store     Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  invitedBy User  @relation("InviteCreator", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([storeId, email, expiresAt])
+  @@index([invitedById, createdAt])
+}
+
+model Product {
+  id          String        @id @default(cuid())
+  storeId     String
+  name        String        @db.VarChar(160)
+  description String?       @db.Text
+  price       Int
+  stock       Int           @default(0)
+  status      ProductStatus @default(DRAFT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  orderItems OrderItem[]
+
+  @@index([storeId, status, createdAt])
+}
+
+model Coupon {
+  id          String     @id @default(cuid())
+  storeId     String
+  code        String     @db.VarChar(40)
+  type        CouponType
+  value       Int
+  maxUses     Int?
+  usedCount   Int        @default(0)
+  expiresAt   DateTime?
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@unique([storeId, code])
+  @@index([storeId, active, expiresAt])
+}
+
+model Order {
+  id               String      @id @default(cuid())
+  storeId          String
+  couponId         String?
+  customerName     String      @db.VarChar(160)
+  customerEmail    String      @db.VarChar(254)
+  status           OrderStatus @default(PENDING)
+  subtotal         Int
+  discount         Int         @default(0)
+  total            Int
+  publicTokenHash  String      @unique @db.Char(64)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  store Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  coupon Coupon?    @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  items OrderItem[]
+  notes OrderNote[]
+
+  @@index([storeId, status, createdAt])
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  productId String
+  name      String @db.VarChar(160)
+  quantity  Int
+  unitPrice Int
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+}
+
+model OrderNote {
+  id        String   @id @default(cuid())
+  orderId   String
+  authorId  String
+  body      String   @db.VarChar(2000)
+  createdAt DateTime @default(now())
+
+  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  storeId   String
+  actorId   String?
+  action    String   @db.VarChar(80)
+  targetId  String?  @db.VarChar(191)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, createdAt])
+  @@index([storeId, targetId])
 }

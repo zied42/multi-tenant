@@ -1,6 +1,6 @@
 # DevSecOps learning plan
 
-This plan is a later learning phase. The project currently has no meaningful test suite, build pipeline, Docker setup, or CI workflow. Do not present the planned controls below as already enabled.
+This plan is a later learning phase. The project now has a focused auth refresh integration suite and frontend build, but no Docker setup or CI workflow. Do not present the planned controls below as already enabled.
 
 ## Local development checks
 
@@ -9,19 +9,28 @@ Current commands:
 ```powershell
 npm run dev
 npm run typecheck
+npm test
+npm --prefix web run build
 ```
 
-`npm test` remains the starter placeholder and must be replaced before anyone relies on it. Add tests deliberately after the corresponding code and concepts are understood.
+Run `npm run dev` from the repository root to start the API and Vite together
+(`concurrently`). Vite listens on port 5173 and proxies `/api` to `127.0.0.1:3000`.
+If proxy requests fail with `ECONNREFUSED`, confirm the API process is alive with
+`Invoke-RestMethod http://127.0.0.1:3000/health` or start `npm run dev:server`.
+
+`npm test` exercises refresh coordination and replay handling against the MySQL database in `DATABASE_URL`; it creates and deletes a uniquely named test user. Use a disposable database when the configured database contains data to preserve. The suite is focused, not broad coverage of the entire application.
 
 ## Proposed sequence
 
-1. Add a real test runner and focused tests for auth, permission policy, tenant isolation, and checkout.
-2. Add build script and verify a clean install/build/migration on a separate test database.
-3. Run `npm audit` and inspect advisories; update dependencies intentionally rather than approving every install script broadly.
-4. Add a GitHub Actions workflow for install, Prisma generation/migration validation, typecheck, build, and tests.
-5. Add secret scanning (e.g. Gitleaks), static analysis (Semgrep or CodeQL), and dependency checks.
-6. Add a container only if the learner wants Docker as a separate lesson; run as non-root and keep secrets out of image layers.
-7. Consider a local DAST exercise against a disposable instance only after routes/tests exist.
+1. Expand focused tests to cover registration, password reset, email verification, permission policy, tenant isolation, invitations, and checkout. The existing automated suite is focused on refresh coordination/replay and does not validate every implemented module.
+2. Reconcile the target and current API before writing authorization/state-machine assertions: audit access roles differ, and the PRD's `DELIVERED` state is not in the current order enum.
+3. Make mock-payment/order-note writes and their audit records transactional if preserving the PRD audit atomicity requirement.
+4. Verify a clean install/build/migration on a separate test database.
+5. Run `npm audit` and inspect advisories; update dependencies intentionally rather than approving every install script broadly.
+6. Add a GitHub Actions workflow for install, Prisma generation/migration validation, typecheck, build, and tests.
+7. Add secret scanning (e.g. Gitleaks), static analysis (Semgrep or CodeQL), and dependency checks.
+8. Add a container only if the learner wants Docker as a separate lesson; run as non-root and keep secrets out of image layers.
+9. Consider a local DAST exercise against a disposable instance only after routes/tests exist.
 
 ## CI target (aspirational)
 

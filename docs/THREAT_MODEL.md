@@ -30,7 +30,7 @@ In scope: Express API, account lifecycle, membership/role checks, tenant-scoped 
 | TM-01 | Cross-tenant object read/write (BOLA/IDOR) | Validate membership and constrain every query with verified `storeId`; test with two stores. |
 | TM-02 | Role escalation or ADMIN affecting OWNER | Central permission map plus service-level hierarchy and last-owner rules. |
 | TM-03 | Mass assignment of `storeId`, `role`, price, total, or status | Strict Zod schemas and explicit Prisma `data` fields. |
-| TM-04 | Stolen/replayed refresh token | Hash at rest, expire, rotate, revoke reuse/session; never log raw values. |
+| TM-04 | Stolen/replayed refresh token | Hash at rest, expire, rotate, row-lock during refresh, return token-free `REFRESH_RETRY` during the 10-second concurrency grace, revoke the family on later reuse, and never log raw values. |
 | TM-05 | Reset/invite token theft or replay | High entropy, hash in DB, one-use, expiry, bind to intended account/email. |
 | TM-06 | Password guessing/user enumeration | Argon2id, strict auth rate limits, uniform credential and reset responses. |
 | TM-07 | JWT substitution or long-lived access | Pin HS256, validate issuer/audience/expiry, use strong env secret, short TTL. |
@@ -60,3 +60,21 @@ The first pass uses local MySQL, mock payment, local reset/verification links, a
 ## Security review method (later phase)
 
 After features exist, choose one threat at a time: reproduce the unsafe behavior in a local test, explain the root cause, fix it, and preserve a regression test. Do not intentionally expose the local app publicly or use real user data/secrets.
+
+## Current gaps to carry into review (2026-10-04)
+
+- Exercise role checks and cross-tenant access with at least two stores. Compile/typecheck success does not prove tenant isolation.
+- Checkout creation is transactional, but mock payment currently commits the status update before writing the audit event. Order-note creation and its audit event are also separate writes. A DB failure can therefore leave incomplete audit coverage.
+- The PRD and implementation disagree about audit-log readers (PRD includes MANAGER/SUPPORT; API allows OWNER/ADMIN) and order progression (`DELIVERED` in PRD versus `PROCESSING`/`COMPLETED` in code). Resolve the intended policies before claiming the matrix/state machine is verified.
+- Product and order list reads are unpaginated. This is a local learning-app limitation, not an immediate production concern.
+- Email verification and password reset are local token flows with no mail transport. Development responses expose `devToken`; never run this mode as a public service.
+- The frontend verification step now follows registration. The Vite proxy requires the API on port 3000; `ECONNREFUSED` for `/auth/*` means the backend process is unavailable, not that the browser token is invalid.
+
+## Current auth session controls
+
+- The refresh token is stored in an HttpOnly cookie; JavaScript receives only the short-lived access token, held in React memory.
+- Web Locks coordinate refreshes across same-origin tabs; a module-level single-flight promise deduplicates requests inside one tab.
+- The MySQL refresh row is locked during rotation. `rotatedAt` distinguishes a near-simultaneous retry (401 `REFRESH_RETRY`, family remains usable) from a later replay (401 `REFRESH_TOKEN_REUSE`, active family tokens are revoked).
+- Logout and password changes publish a `BroadcastChannel` logout event so other tabs clear their in-memory session.
+- Focused integration tests cover simultaneous refresh, the grace interval, a replay after 30 seconds, logout broadcast/revocation, and one refresh-and-retry API request. These tests use the configured `DATABASE_URL` and clean up their generated user; use a disposable database for testing.
+- `SameSite=Lax` is a baseline for this local same-origin setup. A public deployment still needs a deliberate CSRF review and deployment-specific cookie/CORS configuration.
