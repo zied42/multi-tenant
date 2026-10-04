@@ -19,16 +19,6 @@ export type LoginInput = z.infer<typeof loginSchema>;
 
 const opaqueTokenSchema = z.string().min(40).max(128);
 
-export const refreshSchema = z
-  .object({ refreshToken: opaqueTokenSchema })
-  .strict();
-export type RefreshInput = z.infer<typeof refreshSchema>;
-
-export const logoutSchema = z
-  .object({ refreshToken: opaqueTokenSchema })
-  .strict();
-export type LogoutInput = z.infer<typeof logoutSchema>;
-
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1).max(128),

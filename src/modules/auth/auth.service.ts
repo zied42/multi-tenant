@@ -1,7 +1,7 @@
 import { Prisma } from "../../../generated/prisma/client.js";
 import { AppError } from "../../lib/errors.js";
 import { createAccessToken } from "../../lib/jwt.js";
-import { hashPassword, verifyPassword } from "../../lib/password.js";
+import { getDummyHash, hashPassword, verifyPassword } from "../../lib/password.js";
 import {
   createOpaqueToken,
   createTokenFamilyId,
@@ -17,6 +17,7 @@ import type {
 } from "./auth.schemas.js";
 
 const REFRESH_TOKEN_DAYS = 7;
+export const REFRESH_RETRY_GRACE_MS = 10_000;
 const PASSWORD_RESET_MINUTES = 30;
 const EMAIL_VERIFICATION_HOURS = 24;
 
@@ -30,6 +31,12 @@ function expiresInMinutes(minutes: number): Date {
 
 function expiresInHours(hours: number): Date {
   return new Date(Date.now() + hours * 60 * 60 * 1000);
+}
+
+function wasRecentlyRotated(rotatedAt: Date | null, now: Date): boolean {
+  if (!rotatedAt) return false;
+  const ageMs = now.getTime() - rotatedAt.getTime();
+  return ageMs >= 0 && ageMs <= REFRESH_RETRY_GRACE_MS;
 }
 
 async function createSession(userId: string, familyId = createTokenFamilyId()) {
@@ -96,24 +103,21 @@ export async function registerUser(input: RegisterInput) {
 export async function loginUser(input: LoginInput) {
   const user = await prisma.user.findUnique({ where: { email: input.email } });
 
-  if (!user || !(await verifyPassword(user.passwordHash, input.password))) {
+  // always exactly ONE argon2 run, real hash or dummy
+  const hash = user?.passwordHash ?? (await getDummyHash());
+  const passwordOk = await verifyPassword(hash, input.password);
+
+  if (!user || !passwordOk) {
     throw new AppError(401, "INVALID_CREDENTIALS", "Email or password is incorrect");
   }
 
   if (!user.emailVerifiedAt) {
-    throw new AppError(
-      403,
-      "EMAIL_NOT_VERIFIED",
-      "Verify your email before logging in",
-    );
+    throw new AppError(403, "EMAIL_NOT_VERIFIED", "Verify your email before logging in");
   }
 
   const session = await createSession(user.id);
 
-  return {
-    user: { id: user.id, email: user.email },
-    ...session,
-  };
+  return { user: { id: user.id, email: user.email }, ...session };
 }
 
 export async function refreshSession(rawToken: string) {
@@ -121,10 +125,29 @@ export async function refreshSession(rawToken: string) {
   const now = new Date();
 
   const outcome = await prisma.$transaction(async (tx) => {
-    const current = await tx.refreshToken.findUnique({ where: { tokenHash } });
+    // Lock this token row before inspecting it. A concurrent refresh then waits here
+    // and sees the committed rotatedAt value instead of a stale transaction snapshot.
+    const rows = await tx.$queryRaw<Array<{
+      id: string;
+      familyId: string;
+      userId: string;
+      expiresAt: Date;
+      revokedAt: Date | null;
+      rotatedAt: Date | null;
+    }>>(Prisma.sql`
+      SELECT id, familyId, userId, expiresAt, revokedAt, rotatedAt
+      FROM RefreshToken
+      WHERE tokenHash = ${tokenHash}
+      FOR UPDATE
+    `);
+    const current = rows[0];
     if (!current) return { kind: "invalid" as const };
 
     if (current.revokedAt) {
+      if (wasRecentlyRotated(current.rotatedAt, now)) {
+        return { kind: "retry" as const };
+      }
+
       await tx.refreshToken.updateMany({
         where: { familyId: current.familyId, revokedAt: null },
         data: { revokedAt: now },
@@ -142,7 +165,7 @@ export async function refreshSession(rawToken: string) {
 
     const claimed = await tx.refreshToken.updateMany({
       where: { id: current.id, revokedAt: null, expiresAt: { gt: now } },
-      data: { revokedAt: now },
+      data: { revokedAt: now, rotatedAt: now },
     });
 
     if (claimed.count !== 1) {
@@ -178,6 +201,14 @@ export async function refreshSession(rawToken: string) {
   });
 
   if (outcome.kind !== "ok") {
+    if (outcome.kind === "retry") {
+      throw new AppError(
+        401,
+        "REFRESH_RETRY",
+        "A refresh is already in progress; retry with the latest session cookie",
+      );
+    }
+
     throw new AppError(
       401,
       outcome.kind === "reuse" ? "REFRESH_TOKEN_REUSE" : "INVALID_REFRESH_TOKEN",

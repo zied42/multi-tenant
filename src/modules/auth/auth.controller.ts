@@ -1,4 +1,4 @@
-import type { RequestHandler } from "express";
+import type { RequestHandler, Response } from "express";
 import { env } from "../../config/env.js";
 import { AppError } from "../../lib/errors.js";
 import { createOpaqueToken } from "../../lib/tokens.js";
@@ -19,12 +19,33 @@ import type {
   EmailVerificationCompleteInput,
   EmailVerificationRequestInput,
   LoginInput,
-  LogoutInput,
   PasswordResetCompleteInput,
   PasswordResetRequestInput,
-  RefreshInput,
   RegisterInput,
 } from "./auth.schemas.js";
+
+const REFRESH_COOKIE = "storeforge_refresh";
+const REFRESH_COOKIE_PATH = "/api/auth";
+const REFRESH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
+function setRefreshCookie(res: Response, token: string): void {
+  res.cookie(REFRESH_COOKIE, token, {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: REFRESH_COOKIE_PATH,
+    maxAge: REFRESH_COOKIE_MAX_AGE,
+  });
+}
+
+function clearRefreshCookie(res: Response): void {
+  res.clearCookie(REFRESH_COOKIE, {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: REFRESH_COOKIE_PATH,
+  });
+}
 
 function localDebugToken(token: string | null): { devToken: string } | Record<string, never> {
   if (env.NODE_ENV !== "development") return {};
@@ -46,7 +67,9 @@ export const registerController: RequestHandler = async (req, res, next) => {
 
 export const loginController: RequestHandler = async (req, res, next) => {
   try {
-    res.status(200).json(await loginUser(req.body as LoginInput));
+    const { refreshToken, ...response } = await loginUser(req.body as LoginInput);
+    setRefreshCookie(res, refreshToken);
+    res.status(200).json(response);
   } catch (error) {
     next(error);
   }
@@ -54,16 +77,31 @@ export const loginController: RequestHandler = async (req, res, next) => {
 
 export const refreshController: RequestHandler = async (req, res, next) => {
   try {
-    const result = await refreshSession((req.body as RefreshInput).refreshToken);
-    res.status(200).json(result);
+    const token: unknown = req.cookies?.[REFRESH_COOKIE];
+    if (typeof token !== "string") {
+      clearRefreshCookie(res);
+      throw new AppError(401, "INVALID_REFRESH_TOKEN", "The refresh token is missing or expired; log in again");
+    }
+    const { refreshToken, ...response } = await refreshSession(token);
+    setRefreshCookie(res, refreshToken);
+    res.status(200).json(response);
   } catch (error) {
+    if (
+      error instanceof AppError &&
+      error.statusCode === 401 &&
+      error.code !== "REFRESH_RETRY"
+    ) {
+      clearRefreshCookie(res);
+    }
     next(error);
   }
 };
 
 export const logoutController: RequestHandler = async (req, res, next) => {
   try {
-    await logoutSession((req.body as LogoutInput).refreshToken);
+    const token: unknown = req.cookies?.[REFRESH_COOKIE];
+    if (typeof token === "string") await logoutSession(token);
+    clearRefreshCookie(res);
     res.status(204).end();
   } catch (error) {
     next(error);
@@ -77,6 +115,7 @@ export const changePasswordController: RequestHandler = async (req, res, next) =
       throw new AppError(401, "AUTHENTICATION_REQUIRED", "Authentication is required");
     }
     await changePassword(userId, req.body as ChangePasswordInput);
+    clearRefreshCookie(res);
     res.status(200).json({ message: "Password updated; log in again" });
   } catch (error) {
     next(error);

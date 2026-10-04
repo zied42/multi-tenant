@@ -10,3 +10,8 @@ export function verifyPassword(
 ): Promise<boolean> {
   return argon2.verify(passwordHash, password);
 }
+let dummyHash: Promise<string> | undefined;
+export function getDummyHash(): Promise<string> {
+  // same argon2 params as real hashes, computed once
+  return (dummyHash ??= hashPassword("not-a-real-password-for-timing"));
+}

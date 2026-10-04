@@ -4,6 +4,7 @@ import express, {
   type Response,
 } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
 import { env } from "./config/env.js";
@@ -18,7 +19,7 @@ const app: Application = express();
 app.use(requestId);
 app.use(requestLogger);
 app.use(helmet());
-app.use(cors({ origin: env.CORS_ORIGINS }));
+app.use(cors({ origin: env.CORS_ORIGINS, credentials: true }));
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -28,6 +29,7 @@ app.use(
   }),
 );
 app.use(express.json({ limit: "100kb" }));
+app.use(cookieParser());
 
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "ok" });

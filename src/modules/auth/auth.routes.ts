@@ -19,10 +19,8 @@ import {
   emailVerificationCompleteSchema,
   emailVerificationRequestSchema,
   loginSchema,
-  logoutSchema,
   passwordResetCompleteSchema,
   passwordResetRequestSchema,
-  refreshSchema,
   registerSchema,
 } from "./auth.schemas.js";
 
@@ -61,13 +59,11 @@ authRouter.post(
 authRouter.post(
   "/refresh",
   authLimiter(20),
-  validateBody(refreshSchema),
   refreshController,
 );
 authRouter.post(
   "/logout",
   authLimiter(20),
-  validateBody(logoutSchema),
   logoutController,
 );
 authRouter.patch(

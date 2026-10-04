@@ -1,38 +1,16 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { api, ApiError } from "./api";
+import { api, ApiError, refreshAccessToken } from "./api";
+import { broadcastLogout, subscribeToLogout } from "./auth-coordination";
 import "./styles.css";
 
 type Screen = "login" | "register" | "verify" | "forgot" | "reset" | "account";
 type User = { id: string; email: string; emailVerifiedAt: string | null; createdAt: string };
-type Session = { accessToken: string; refreshToken: string; expiresAt: number };
-type TokenPair = {
+type Session = { accessToken: string };
+type AuthResponse = {
   accessToken: string;
-  refreshToken: string;
   expiresIn: number;
-  refreshExpiresIn: number;
   user?: User;
 };
-
-const SESSION_KEY = "storeforge.auth.session";
-
-function readSession(): Session | null {
-  try {
-    const saved = sessionStorage.getItem(SESSION_KEY);
-    return saved ? (JSON.parse(saved) as Session) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveSession(tokens: TokenPair): Session {
-  const value = {
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-    expiresAt: Date.now() + tokens.expiresIn * 1000,
-  };
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(value));
-  return value;
-}
 
 function Brand({ light = false }: { light?: boolean }) {
   return (
@@ -82,8 +60,8 @@ function Field(props: {
 }
 
 function App() {
-  const [session, setSession] = useState<Session | null>(() => readSession());
-  const [screen, setScreen] = useState<Screen>(() => readSession() ? "account" : "login");
+  const [session, setSession] = useState<Session | null>(null);
+  const [screen, setScreen] = useState<Screen>("login");
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -92,38 +70,46 @@ function App() {
   const [token, setToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [restoring, setRestoring] = useState(() => Boolean(readSession()));
+  const [restoring, setRestoring] = useState(true);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const saved = readSession();
-    if (!saved) return;
-    const existing: Session = saved;
+    return subscribeToLogout(() => {
+      setSession(null);
+      setUser(null);
+      setScreen("login");
+      setNotice("You signed out in another tab.");
+      setError("");
+    });
+  }, []);
+
+  useEffect(() => {
     let active = true;
     async function restore() {
       try {
-        const profile = await api<{ user: User }>("/auth/me", { accessToken: existing.accessToken });
-        if (active) setUser(profile.user);
-      } catch {
+        // Remove the old JavaScript-readable session after switching to HttpOnly cookies.
         try {
-          const rotated = await api<TokenPair>("/auth/refresh", {
-            method: "POST",
-            body: { refreshToken: existing.refreshToken },
-          });
-          const next = saveSession(rotated);
-          const profile = await api<{ user: User }>("/auth/me", { accessToken: next.accessToken });
-          if (active) {
-            setSession(next);
-            setUser(profile.user);
-          }
+          window.sessionStorage.removeItem("storeforge.auth.session");
         } catch {
-          sessionStorage.removeItem(SESSION_KEY);
-          if (active) {
-            setSession(null);
-            setUser(null);
-            setScreen("login");
-          }
+          // Storage can be unavailable in restricted browser contexts.
+        }
+        const accessToken = await refreshAccessToken();
+        const profile = await api<{ user: User }>("/auth/me", {
+          accessToken,
+          onAccessToken: (nextToken) => setSession({ accessToken: nextToken }),
+          onSessionExpired: clearLocalSession,
+        });
+        if (active) {
+          setSession({ accessToken });
+          setUser(profile.user);
+          setScreen("account");
+        }
+      } catch {
+        if (active) {
+          setSession(null);
+          setUser(null);
+          setScreen("login");
         }
       } finally {
         if (active) setRestoring(false);
@@ -132,6 +118,12 @@ function App() {
     void restore();
     return () => { active = false; };
   }, []);
+
+  function clearLocalSession() {
+    setSession(null);
+    setUser(null);
+    setScreen("login");
+  }
 
   function clearMessages() {
     setNotice("");
@@ -178,15 +170,19 @@ function App() {
 
   async function login(event: FormEvent<HTMLFormElement>) {
     await run(event, async () => {
-      const result = await api<TokenPair>("/auth/login", {
+      const result = await api<AuthResponse>("/auth/login", {
         method: "POST", body: { email, password },
       });
-      const next = saveSession(result);
+      const next = { accessToken: result.accessToken };
       setSession(next);
       setPassword("");
       const profile = result.user
         ? { user: result.user }
-        : await api<{ user: User }>("/auth/me", { accessToken: next.accessToken });
+        : await api<{ user: User }>("/auth/me", {
+          accessToken: next.accessToken,
+          onAccessToken: (nextToken) => setSession({ accessToken: nextToken }),
+          onSessionExpired: clearLocalSession,
+        });
       setUser(profile.user);
       setScreen("account");
       setNotice("You’re signed in. Your workspace is ready.");
@@ -250,16 +246,16 @@ function App() {
     clearMessages();
     setBusy(true);
     try {
-      const result = await api<TokenPair>("/auth/refresh", {
-        method: "POST", body: { refreshToken: session.refreshToken },
-      });
-      setSession(saveSession(result));
+      const accessToken = await refreshAccessToken();
+      setSession({ accessToken });
       setNotice("Session refreshed. The previous refresh token has been retired.");
     } catch (caught) {
-      sessionStorage.removeItem(SESSION_KEY);
-      setSession(null);
-      setUser(null);
-      setScreen("login");
+      if (caught instanceof ApiError && caught.code === "REFRESH_RETRY") {
+        setError("Another tab is finishing a refresh. Please try again shortly.");
+        return;
+      }
+      clearLocalSession();
+      broadcastLogout();
       setError(caught instanceof Error ? caught.message : "Session expired. Please sign in again.");
     } finally {
       setBusy(false);
@@ -272,9 +268,11 @@ function App() {
       await api("/auth/password", {
         method: "PATCH",
         accessToken: session.accessToken,
+        onAccessToken: (accessToken) => setSession({ accessToken }),
+        onSessionExpired: clearLocalSession,
         body: { currentPassword, newPassword },
       });
-      sessionStorage.removeItem(SESSION_KEY);
+      broadcastLogout();
       setSession(null);
       setUser(null);
       setCurrentPassword("");
@@ -288,15 +286,11 @@ function App() {
     clearMessages();
     setBusy(true);
     try {
-      if (session) {
-        await api("/auth/logout", {
-          method: "POST", body: { refreshToken: session.refreshToken },
-        });
-      }
+      await api("/auth/logout", { method: "POST" });
     } catch {
       // Always remove this browser's saved credentials, even if the API is unavailable.
     } finally {
-      sessionStorage.removeItem(SESSION_KEY);
+      broadcastLogout();
       setSession(null);
       setUser(null);
       setScreen("login");
